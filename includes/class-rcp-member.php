@@ -733,7 +733,7 @@ class RCP_Member extends WP_User {
 		// Assume the user can until proven false
 		$ret = true;
 
-		if ( rcp_is_paid_content( $post_id ) && ! $this->is_active() ) {
+		if ( rcp_is_paid_content( $post_id ) && $this->is_expired() ) {
 
 			$ret = false;
 
