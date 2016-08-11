@@ -223,7 +223,7 @@
 					<?php if ( ! empty( $rcp_options['invoice_email'] ) ) : ?>
 						<p><strong><?php echo $rcp_options['invoice_email']; ?></strong></p>
 					<?php endif; ?>
-
+					<?php do_action( 'rcp_invoice_extra' ); ?>
 				</article>
 			</div>
 
@@ -234,6 +234,7 @@
 				<article>
 					<p><strong><?php echo $rcp_member->first_name . ' ' . $rcp_member->last_name; ?></strong></p>
 					<p><strong><?php echo $rcp_member->user_email; ?></strong></p>
+					<?php do_action( 'rcp_member_invoice_fields', $rcp_payment ); ?>
 				</article>
 
 			</div>
@@ -248,18 +249,21 @@
 				<tbody>
 					<tr>
 						<td class="name"><?php echo $rcp_payment->subscription; ?></td>
+						<?php do_action( 'rcp_member_invoice_row_fields', $rcp_payment ); ?>
 						<td class="price"><?php echo rcp_currency_filter( $rcp_payment->amount ); ?></td>
 					</tr>
 				</tbody>
 				<tfoot>
 					<!-- Total -->
 					<tr>
+						<?php do_action( 'rcp_member_invoice_total_fields', $rcp_payment ); ?>
 						<td class="name"><?php _e( 'Total Price:', 'rcp' ); ?></td>
 						<td class="price"><?php echo rcp_currency_filter( $rcp_payment->amount ); ?></td>
 					</tr>
 
 					<!-- Paid -->
 					<tr>
+						<?php do_action( 'rcp_member_invoice_status_fields', $rcp_payment ); ?>
 						<td class="name"><?php _e( 'Payment Status:', 'rcp' ); ?></td>
 						<td class="price"><?php echo rcp_get_payment_status_label( $rcp_payment ); ?></td>
 					</tr>
