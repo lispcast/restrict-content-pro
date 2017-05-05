@@ -1,10 +1,20 @@
 <?php
+/**
+ * Error Tracking
+ *
+ * For managing, adding, and displaying error messages.
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Error Tracking
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 /**
  * Stores error messages
  *
- * @access      public
- * @since       1.0
+ * @since  1.0
+ * @return WP_Error
  */
 function rcp_errors() {
     static $wp_error; // Will hold global variable safely
@@ -14,8 +24,10 @@ function rcp_errors() {
 /**
  * Retrieves the HTML for error messages
  *
- * @access      public
- * @since       2.1
+ * @param string $error_id
+ *
+ * @since  2.1
+ * @return string
  */
 function rcp_get_error_messages_html( $error_id = '' ) {
 
@@ -49,8 +61,10 @@ function rcp_get_error_messages_html( $error_id = '' ) {
 /**
  * Displays the HTML for error messages
  *
- * @access      public
- * @since       1.0
+ * @param string $error_id
+ *
+ * @since  1.0
+ * @return void
  */
 function rcp_show_error_messages( $error_id = '' ) {
 	if( rcp_errors()->get_error_codes() ) {

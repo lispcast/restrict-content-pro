@@ -1,4 +1,18 @@
-<?php global $rcp_options, $rcp_payment, $rcp_member; ?>
+<?php
+/**
+ * Invoice
+ *
+ * Template for displaying invoice details.
+ *
+ * For modifying this template, please see: http://docs.restrictcontentpro.com/article/1738-template-files
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Templates/Invoice
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+global $rcp_options, $rcp_payment, $rcp_member; ?>
 <!DOCTYPE html>
 <html lang="en-US" prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#">
 <head>
@@ -169,6 +183,9 @@
 		margin: 60px 0 0 0;
 		text-align: right;
 	}
+	img {
+		max-width: 100%;
+	}
 	@media print  {
 		.print {
 			display: none;
@@ -245,14 +262,17 @@
 				<tbody>
 					<tr>
 						<td class="name"><?php echo $rcp_payment->subscription; ?></td>
-						<td class="price"><?php echo rcp_currency_filter( $rcp_payment->amount ); ?></td>
+						<td class="price"><?php echo rcp_currency_filter( number_format( $rcp_payment->amount, rcp_currency_decimal_filter() ) ); ?></td>
 					</tr>
+					<?php do_action( 'rcp_invoice_items', $rcp_payment ); ?>
 				</tbody>
 				<tfoot>
+					<?php do_action( 'rcp_invoice_items_before_total_price', $rcp_payment ); ?>
+
 					<!-- Total -->
 					<tr>
 						<td class="name"><?php _e( 'Total Price:', 'rcp' ); ?></td>
-						<td class="price"><?php echo rcp_currency_filter( $rcp_payment->amount ); ?></td>
+						<td class="price"><?php echo rcp_currency_filter( number_format( $rcp_payment->amount, rcp_currency_decimal_filter() ) ); ?></td>
 					</tr>
 
 					<!-- Paid -->
@@ -279,8 +299,11 @@
 					</article>
 				<?php endif; ?>
 
+				<?php do_action( 'rcp_invoice_additional_info', $rcp_payment ); ?>
 			</div>
 		</section>
+
+		<?php do_action( 'rcp_invoice_after_additional_info', $rcp_payment ); ?>
 
 		<footer id="footer">
 			<?php if( ! empty( $rcp_options['invoice_footer'] ) ) : ?>

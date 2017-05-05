@@ -1,3 +1,20 @@
+<?php
+/**
+ * Card Form - Full
+ *
+ * This template is for displaying credit card form details. It's shown on the registration
+ * form when selecting a gateway that supports taking credit/debit card details directly and
+ * requires a full billing address.
+ *
+ * For modifying this template, please see: http://docs.restrictcontentpro.com/article/1738-template-files
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Templates/Card Form Full
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+?>
+
 <fieldset class="rcp_card_fieldset">
     <p id="rcp_card_number_wrap">
         <label><?php _e( 'Card Number', 'rcp' ); ?></label>
@@ -16,7 +33,7 @@
         <input type="text" size="20" name="rcp_card_city" class="rcp_card_city card-city" />
     </p>
     <p id="rcp_card_state_wrap">
-        <label><?php _e( 'State or Providence', 'rcp' ); ?></label>
+        <label><?php _e( 'State or Province', 'rcp' ); ?></label>
         <input type="text" size="20" name="rcp_card_state" class="rcp_card_state card-state" />
     </p>
     <p id="rcp_card_country_wrap">

@@ -1,6 +1,24 @@
 <?php
+/**
+ * Member Forms
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Member Forms
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
-// login form fields
+/**
+ * Display login form fields
+ *
+ * Based on the requested action, this could be the lost password form,
+ * lost password "check your email" message, change password form,
+ * or the login form template.
+ *
+ * @param array $args Arguments to override the defaults (including redirect URL).
+ *
+ * @return string HTML content.
+ */
 function rcp_login_form_fields( $args = array() ) {
 
 	global $rcp_login_form_args;
@@ -22,7 +40,7 @@ function rcp_login_form_fields( $args = array() ) {
 		echo rcp_lostpassword_form_fields();
 	} elseif ( isset($_REQUEST['rcp_action']) && $_REQUEST['rcp_action'] === "lostpassword_checkemail") {
 		echo rcp_lostpassword_checkemail_message();
-	} elseif ( isset($_REQUEST['rcp_action']) && $_REQUEST['rcp_action'] === "lostpassword_reset") {
+	} elseif ( isset($_REQUEST['rcp_action']) && ( $_REQUEST['rcp_action'] === "lostpassword_reset" || $_REQUEST['rcp_action'] === "reset-password" )) {
 		echo rcp_change_password_form();
 	} else {
 		do_action( 'rcp_before_login_form' );
@@ -69,7 +87,13 @@ function rcp_lostpassword_checkemail_message() {
 	return ob_get_clean();
 }
 
-// registration form fields
+/**
+ * Display registration form fields
+ *
+ * @param null|int $id ID of the subscription, to use register-single.php, or null to use register.php.
+ *
+ * @return string
+ */
 function rcp_registration_form_fields( $id = null ) {
 
 	global $rcp_level;
@@ -103,6 +127,13 @@ function rcp_registration_form_fields( $id = null ) {
 	return ob_get_clean();
 }
 
+/**
+ * Display change password form fields
+ *
+ * @param array $args Arguments to override the defaults.
+ *
+ * @return string
+ */
 function rcp_change_password_form( $args = array() ) {
 
 	global $rcp_password_form_args;
@@ -120,14 +151,21 @@ function rcp_change_password_form( $args = array() ) {
 	return ob_get_clean();
 }
 
+/**
+ * Display auto renew checkbox, if set to allow the user to decide.
+ *
+ * @param array $levels
+ *
+ * @return void
+ */
 function rcp_add_auto_renew( $levels = array() ) {
 	if( '3' == rcp_get_auto_renew_behavior() ) :
-?>
+		global $rcp_options;
+		?>
 		<p id="rcp_auto_renew_wrap">
-			<input name="rcp_auto_renew" id="rcp_auto_renew" type="checkbox" checked="checked"/>
+			<input name="rcp_auto_renew" id="rcp_auto_renew" type="checkbox" <?php echo isset( $rcp_options['auto_renew_checked_on'] ) ? 'checked="checked"' : ''; ?>/>
 			<label for="rcp_auto_renew"><?php echo apply_filters ( 'rcp_registration_auto_renew', __( 'Auto Renew', 'rcp' ) ); ?></label>
 		</p>
-<?php
-	endif;
+	<?php endif;
 }
 add_action( 'rcp_before_registration_submit_field', 'rcp_add_auto_renew' );

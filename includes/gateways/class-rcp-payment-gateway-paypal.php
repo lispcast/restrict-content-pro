@@ -1,10 +1,10 @@
 <?php
 /**
- * Payment Gateway Base Class
+ * PayPal Standard Payment Gateway
  *
  * @package     Restrict Content Pro
- * @subpackage  Classes/Roles
- * @copyright   Copyright (c) 2012, Pippin Williamson
+ * @subpackage  Classes/Gateways/PayPal
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       2.1
 */
@@ -20,7 +20,9 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 	/**
 	 * Get things going
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function init() {
 
@@ -29,6 +31,7 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 		$this->supports[]  = 'one-time';
 		$this->supports[]  = 'recurring';
 		$this->supports[]  = 'fees';
+		$this->supports[] = 'trial';
 
 		if( $this->test_mode ) {
 
@@ -57,7 +60,9 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 	/**
 	 * Process registration
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_signup() {
 
@@ -99,56 +104,69 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 			$paypal_args['src'] = '1';
 			$paypal_args['sra'] = '1';
 			$paypal_args['a3'] = $this->amount;
-
-			if( ! empty( $this->signup_fee ) ) {
-				$paypal_args['a1'] = number_format( $this->signup_fee + $this->amount, 2 );
-			}
+			$paypal_args['a1'] = $this->initial_amount;
 
 			$paypal_args['p3'] = $this->length;
-
-			if( ! empty( $this->signup_fee ) ) {
-				$paypal_args['p1'] = $this->length;
-			}
+			$paypal_args['p1'] = $this->length;
 
 			switch ( $this->length_unit ) {
 
 				case "day" :
 
 					$paypal_args['t3'] = 'D';
-					if( ! empty( $this->signup_fee ) ) {
-						$paypal_args['t1'] = 'D';
-					}
+					$paypal_args['t1'] = 'D';
 					break;
 
 				case "month" :
 
 					$paypal_args['t3'] = 'M';
-					if( ! empty( $this->signup_fee ) ) {
-						$paypal_args['t1'] = 'M';
-					}
+					$paypal_args['t1'] = 'M';
 					break;
 
 				case "year" :
 
 					$paypal_args['t3'] = 'Y';
-					if( ! empty( $this->signup_fee ) ) {
-						$paypal_args['t1'] = 'Y';
-					}
+					$paypal_args['t1'] = 'Y';
 					break;
 
+			}
+
+			if ( $this->is_trial() ) {
+
+				$paypal_args['a1'] = 0;
+				$paypal_args['p1'] = $this->subscription_data['trial_duration'];
+
+				switch ( $this->subscription_data['trial_duration_unit'] ) {
+
+					case 'day':
+						$paypal_args['t1'] = 'D';
+						break;
+
+					case 'month':
+						$paypal_args['t1'] = 'M';
+						break;
+
+					case 'year':
+						$paypal_args['t1'] = 'Y';
+						break;
+				}
 			}
 
 		} else {
 
 			// one time payment
 			$paypal_args['cmd'] = '_xclick';
-			$paypal_args['amount'] = round( $this->amount + $this->signup_fee, 2 );
+			$paypal_args['amount'] = $this->initial_amount;
 
 		}
 
 		$paypal_args = apply_filters( 'rcp_paypal_args', $paypal_args, $this );
 
+		// Build query
 		$paypal_redirect .= http_build_query( $paypal_args );
+
+		// Fix for some sites that encode the entities
+		$paypal_redirect = str_replace( '&amp;', '&', $paypal_redirect );
 
 		// Redirect to paypal
 		header( 'Location: ' . $paypal_redirect );
@@ -159,7 +177,9 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 	/**
 	 * Process PayPal IPN
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_webhooks() {
 
@@ -258,9 +278,11 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 
 			$subscription_name  = $posted['item_name'];
 			$subscription_key   = $posted['item_number'];
-			$amount             = number_format( (float) $posted['mc_gross'], 2 );
-			$amount2            = number_format( (float) $posted['mc_amount3'], 2 );
-			$payment_status     = $posted['payment_status'];
+			$has_trial          = ! empty( $posted['period1'] );
+			$amount             = ! $has_trial ? number_format( (float) $posted['mc_gross'], 2 ) : number_format( (float) $posted['mc_amount1'], 2 );
+			// not used anywhere?
+			// $amount2            = number_format( (float) $posted['mc_amount3'], 2 );
+			$payment_status     = ! empty( $posted['payment_status'] ) ? $posted['payment_status'] : false;
 			$currency_code      = $posted['mc_currency'];
 			$subscription_price = number_format( (float) rcp_get_subscription_price( $subscription_id ), 2 );
 
@@ -282,15 +304,17 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 
 			}
 
+			$rcp_payments = new RCP_Payments();
+
 			// setup the payment info in an array for storage
 			$payment_data = array(
-				'date'             => date( 'Y-m-d H:i:s', strtotime( $posted['payment_date'], current_time( 'timestamp' ) ) ),
+				'date'             => ! empty( $posted['payment_date'] ) ? date( 'Y-m-d H:i:s', strtotime( $posted['payment_date'], current_time( 'timestamp' ) ) ) : date( 'Y-m-d H:i:s', strtotime( 'now', current_time( 'timestamp' ) ) ),
 				'subscription'     => $posted['item_name'],
 				'payment_type'     => $posted['txn_type'],
 				'subscription_key' => $subscription_key,
 				'amount'           => $amount,
 				'user_id'          => $user_id,
-				'transaction_id'   => $posted['txn_id']
+				'transaction_id'   => ! empty( $posted['txn_id'] ) ? $posted['txn_id'] : false
 			);
 
 			do_action( 'rcp_valid_ipn', $payment_data, $user_id, $posted );
@@ -298,7 +322,7 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 			if( $posted['txn_type'] == 'web_accept' || $posted['txn_type'] == 'subscr_payment' ) {
 
 				// only check for an existing payment if this is a payment IPD request
-				if( rcp_check_for_existing_payment( $posted['txn_type'], $posted['payment_date'], $subscription_key ) ) {
+				if( ! empty( $posted['txn_id'] ) && $rcp_payments->payment_exists( $posted['txn_id'] ) ) {
 
 					$log_data = array(
 						'post_title'    => __( 'Duplicate Payment', 'rcp' ),
@@ -317,7 +341,7 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 					die( 'duplicate IPN detected' );
 				}
 
-				if( strtolower( $currency_code ) != strtolower( $rcp_options['currency'] ) ) {
+				if( ! rcp_is_valid_currency( $currency_code ) ) {
 					// the currency code is invalid
 
 					$log_data = array(
@@ -345,8 +369,6 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 
 			/* now process the kind of subscription/payment */
 
-			$rcp_payments = new RCP_Payments();
-
 			// Subscriptions
 			switch ( $posted['txn_type'] ) :
 
@@ -356,11 +378,18 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 					// store the recurring payment ID
 					update_user_meta( $user_id, 'rcp_paypal_subscriber', $posted['payer_id'] );
 
-					if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
-						$cancelled = rcp_cancel_member_payment_profile( $member->ID, false );
+					if( $member->just_upgraded() && $member->can_cancel() ) {
+						$cancelled = $member->cancel_payment_profile( false );
 					}
 
 					$member->set_payment_profile_id( $posted['subscr_id'] );
+
+					if ( $has_trial ) {
+						$trial_expires = $member->calculate_expiration( true, true );
+						$member->set_expiration_date( $trial_expires );
+						$member->set_status( 'active' );
+						$member->set_recurring( true );
+					}
 
 					do_action( 'rcp_ipn_subscr_signup', $user_id );
 
@@ -394,7 +423,7 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 					if( ! $member->just_upgraded() ) {
 
 						// user is marked as cancelled but retains access until end of term
-						$member->set_status( 'cancelled' );
+						$member->cancel();
 
 						// set the use to no longer be recurring
 						delete_user_meta( $user_id, 'rcp_paypal_subscriber' );
@@ -409,6 +438,16 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 
 				case "subscr_failed" :
 
+					if ( ! empty( $posted['txn_id'] ) ) {
+
+						$this->webhook_event_id = sanitize_text_field( $posted['txn_id'] );
+
+					} elseif ( ! empty( $posted['ipn_track_id'] ) ) {
+
+						$this->webhook_event_id = sanitize_text_field( $posted['ipn_track_id'] );
+					}
+
+					do_action( 'rcp_recurring_payment_failed', $member, $this );
 					do_action( 'rcp_ipn_subscr_failed' );
 
 					die( 'successful subscr_failed' );
@@ -419,7 +458,7 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 
 					// user's subscription has reached the end of its term
 
-					if( 'cancelled' !== $member->get_status( $user_id ) ) {
+					if( isset( $posted['subscr_id'] ) && $posted['subscr_id'] == $member->get_payment_profile_id() && 'cancelled' !== $member->get_status() ) {
 
 						$member->set_status( 'expired' );
 
@@ -438,8 +477,8 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 
 						case 'completed' :
 
-							if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
-								$cancelled = rcp_cancel_member_payment_profile( $member->ID, false );
+							if( $member->just_upgraded() && $member->can_cancel() ) {
+								$cancelled = $member->cancel_payment_profile( false );
 								if( $cancelled ) {
 
 									$member->set_payment_profile_id( '' );
@@ -458,7 +497,7 @@ class RCP_Payment_Gateway_PayPal extends RCP_Payment_Gateway {
 						case 'expired' :
 						case 'failed' :
 						case 'voided' :
-							$member->set_status( 'cancelled' );
+							$member->cancel();
 							break;
 
 					endswitch;

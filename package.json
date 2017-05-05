@@ -1,16 +1,16 @@
 {
   "name": "restrict-content-pro",
-  "version": "2.6.5",
+  "version": "2.8.2",
   "description": "Set up a complete subscription system for your WordPress site and deliver premium content to your subscribers. Unlimited subscription packages, membership management, discount codes, registration / login forms, and more.",
-  "homepage": "http://restrictcontentpro.com/",
-  "author": "Pippin Williamson <support@restrictcontentpro.com> (http://restrictcontentpro.com/)",
+  "homepage": "https://restrictcontentpro.com/",
+  "author": "Pippin Williamson <support@restrictcontentpro.com> (https://restrictcontentpro.com/)",
   "contributors": "Pippin Williamson",
   "repository": {
     "type": "git",
     "url": "https://github.com:restrictcontentpro/restrict-content-pro.git"
   },
   "bugs": {
-    "url": "http://restrictcontentpro.com/support/"
+    "url": "https://restrictcontentpro.com/support/"
   },
   "license": "GPLv2+",
   "private": true,
@@ -27,7 +27,7 @@
     "textdomain": "rcp",
     "src": "restrict-content-pro.php",
     "header": {
-      "bugs": "http://restrictcontentpro.com/support/",
+      "bugs": "https://restrictcontentpro.com/support/",
       "team": "Restrict Content Pro <support@restrictcontentpro.com>",
       "last_translator": "Restrict Content Pro <support@restrictcontentpro.com>"
     }

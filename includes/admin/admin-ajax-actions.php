@@ -1,6 +1,20 @@
 <?php
+/**
+ * Admin Ajax Actions
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Ajax Actions
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
-// retrieves the expiration date of a subscription level
+/**
+ * Retrieves the expiration date of a subscription level
+ *
+ * @uses rcp_calculate_subscription_expiration()
+ *
+ * @return void
+ */
 function rcp_ajax_get_subscription_expiration() {
 	if( isset( $_POST['subscription_level'] ) ) {
 		$level_id = absint( $_POST['subscription_level'] );
@@ -11,7 +25,11 @@ function rcp_ajax_get_subscription_expiration() {
 }
 add_action( 'wp_ajax_rcp_get_subscription_expiration', 'rcp_ajax_get_subscription_expiration' );
 
-// processes the ajax re-ordering request
+/**
+ * Processes the ajax re-ordering request
+ *
+ * @return void
+ */
 function rcp_update_subscription_order() {
 	if( isset( $_POST['recordsArray'] ) ) {
 		global $wpdb, $rcp_db_name;
@@ -33,7 +51,11 @@ function rcp_update_subscription_order() {
 }
 add_action( 'wp_ajax_update-subscription-order', 'rcp_update_subscription_order' );
 
-// retrieves a list of users via live search
+/**
+ * Retrieves a list of users via live search
+ *
+ * @return void
+ */
 function rcp_search_users() {
 
 	if( wp_verify_nonce( $_POST['rcp_nonce'], 'rcp_member_nonce' ) ) {

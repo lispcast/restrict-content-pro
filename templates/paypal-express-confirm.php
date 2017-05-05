@@ -1,4 +1,19 @@
-<?php global $rcp_checkout_details; ?>
+<?php
+/**
+ * PayPal Express Confirmation
+ *
+ * This template is loaded while processing a PayPal Express payment. The customer is
+ * asked to confirm the subscription details.
+ *
+ * For modifying this template, please see: http://docs.restrictcontentpro.com/article/1738-template-files
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Templates/PayPal Express Confirmation
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+global $rcp_checkout_details; ?>
 <div class="rcp-confirm-details" id="billing_info">
 	<h3><?php _e( 'Please confirm your payment', 'rcp' ); ?></h3>
 	<p><strong><?php echo $rcp_checkout_details['FIRSTNAME'] ?> <?php echo $rcp_checkout_details['LASTNAME'] ?></strong><br />
@@ -46,5 +61,5 @@
 	<input type="hidden" name="token" value="<?php echo esc_attr( $_GET['token'] ); ?>" />
 	<input type="hidden" name="payer_id" value="<?php echo esc_attr( $_GET['PayerID'] ); ?>" />
 	<input type="hidden" name="rcp_ppe_confirm_nonce" value="<?php echo wp_create_nonce( 'rcp-ppe-confirm-nonce' ); ?>"/>
-	<input type="submit" value="<?php _e( 'Confirm', 'rcp' ); ?>" />
+	<input type="submit" value="<?php esc_attr_e( 'Confirm', 'rcp' ); ?>" />
 </form>

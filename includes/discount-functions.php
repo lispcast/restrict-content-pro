@@ -1,17 +1,20 @@
 <?php
+/**
+ * Discount Functions
+ *
+ * Functions for getting non-member specific info about discount codes.
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Discount Functions
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
-/****************************************
-* Functions for getting non-member
-* specific info about discount codes
-*****************************************/
-
-
-/*
-* Retrieves all discount codes
-*
-* return object/bool
-*/
-
+/**
+ * Retrieves all discount codes
+ *
+ * @return array|bool
+ */
 function rcp_get_discounts() {
 	$discounts_db = new RCP_Discounts();
 	$discounts    = $discounts_db->get_discounts();
@@ -21,13 +24,11 @@ function rcp_get_discounts() {
 	return false;
 }
 
-
-/*
-* Check if we have any discounts
-*
-* return bool
-*/
-
+/**
+ * Check if we have any discounts
+ *
+ * @return bool
+ */
 function rcp_has_discounts() {
 	$discounts = new RCP_Discounts();
 	if( $discounts->get_discounts( array( 'status' => 'active' )) )
@@ -35,39 +36,45 @@ function rcp_has_discounts() {
 	return false;
 }
 
-
-/*
-* returns the DB object for a discount code
-* @param int $id - the ID number of the discount to retrieve data for
-* return object
-*/
+/**
+ * Returns the DB object for a given discount code.
+ *
+ * @param int $id The ID number of the discount to retrieve data for.
+ *
+ * @return object
+ */
 function rcp_get_discount_details( $id ) {
 	global $wpdb, $rcp_discounts_db_name;
 	$code = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM " . $rcp_discounts_db_name . " WHERE id='%d';", $id ) );
 	return $code[0];
 }
 
-/*
-* returns the DB object for a discount code, based on the code provided
-* @param string $code - the discount code to retrieve all information for
-* return object
-*/
+/**
+ * Returns the DB object for a discount code, based on the code provided.
+ *
+ * @param string $code The discount code to retrieve all information for.
+ *
+ * @return object
+ */
 function rcp_get_discount_details_by_code( $code ) {
 	global $wpdb, $rcp_discounts_db_name;
-	$code = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM " . $rcp_discounts_db_name . " WHERE code='%s';", $code ) );
+	$code = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM " . $rcp_discounts_db_name . " WHERE code='%s';", strtolower( $code ) ) );
 	return $code[0];
 }
 
-/*
-* Check whether a discount code is valid
-* @param - string $code - the discount code to validate
-* return boolean
-*/
+/**
+ * Check whether a given discount code is valid.
+ *
+ * @param string $code            The discount code to validate.
+ * @param int    $subscription_id ID of the subscription level you want to use the code for.
+ *
+ * @return bool
+ */
 function rcp_validate_discount( $code, $subscription_id = 0 ) {
 
 	$ret       = false;
 	$discounts = new RCP_Discounts();
-	$discount  = $discounts->get_by( 'code', $code );
+	$discount  = $discounts->get_by( 'code', strtolower( $code ) );
 
 	if( ! empty( $discount ) && $discount->status == 'active' ) {
 
@@ -83,8 +90,8 @@ function rcp_validate_discount( $code, $subscription_id = 0 ) {
 			}
 		}
 
-		// Ensure codes are identical, including case
-		if( strcmp( $code, $discount->code ) != 0 ) {
+		// Ensure codes match, case insensitive
+		if( strcasecmp( $code, $discount->code ) != 0 ) {
 			$ret = false;
 		}
 
@@ -93,12 +100,13 @@ function rcp_validate_discount( $code, $subscription_id = 0 ) {
 	return apply_filters( 'rcp_is_discount_valid', $ret, $discount, $subscription_id );
 }
 
-
-/*
-* Get the status of a discount code
-* @param - string $code_id - the discount code ID to validate
-* return string on success, false on failure
-*/
+/**
+ * Get the status of a discount code
+ *
+ * @param int $code_id The discount code ID.
+ *
+ * @return string|bool Status name on success, false on failure.
+ */
 function rcp_get_discount_status( $code_id ) {
 	global $wpdb, $rcp_discounts_db_name;
 
@@ -109,11 +117,13 @@ function rcp_get_discount_status( $code_id ) {
 	return false;
 }
 
-/*
-* Checks whether a discount code has uses left
-* @param - string $code_id - the discount code ID to check
-* return true if uses left, false otherwise
-*/
+/**
+ * Checks whether a discount code has any uses left.
+ *
+ * @param int $code_id The ID of the discount code to check.
+ *
+ * @return bool True if uses left, false otherwise.
+ */
 function rcp_discount_has_uses_left( $code_id ) {
 	global $wpdb, $rcp_discounts_db_name;
 
@@ -134,11 +144,13 @@ function rcp_discount_has_uses_left( $code_id ) {
 	return false;
 }
 
-/*
-* Checks whether a discount code is expired
-* @param - int $code_id - the discount code ID to validate
-* return true if not expired, false if expired
-*/
+/**
+ * Checks whether a discount code has not expired.
+ *
+ * @param int $code_id The ID of the discount code to check.
+ *
+ * @return bool True if not expired, false if expired.
+ */
 function rcp_is_discount_not_expired( $code_id ) {
 	global $wpdb, $rcp_discounts_db_name;
 	$expiration = $wpdb->get_results( $wpdb->prepare( "SELECT expiration FROM " . $rcp_discounts_db_name . " WHERE id='%d';", $code_id ) );
@@ -155,14 +167,15 @@ function rcp_is_discount_not_expired( $code_id ) {
 	return false;
 }
 
-
-/*
-* Calculates a subscription price after discount
-* @param - float $base_price - the original subscription price
-* @param - float $amount - the discount amount
-* @param - string $type - the kind of discount, either % or flat
-* return float
-*/
+/**
+ * Calculates a subscription price after applying a discount.
+ *
+ * @param float $base_price The original subscription price.
+ * @param float $amount The discount amount.
+ * @param string $type The kind of discount, either '%' or 'flat'.
+ *
+ * @return string
+ */
 function rcp_get_discounted_price( $base_price, $amount, $type ) {
 
 	if( $type == '%' ) {
@@ -174,15 +187,15 @@ function rcp_get_discounted_price( $base_price, $amount, $type ) {
 	return number_format( (float) $discounted_price, 2 );
 }
 
-
-/*
-* Stores a discount code in a user's history
-*
-* @param string $code - the discount code to store
-* @param int $user_id - the ID of the user to store the discount for
-* @param object $discount_object - the object containing all info about the discount
-* return void
-*/
+/**
+ * Stores a discount code in a user's history.
+ *
+ * @param string $code            The discount code to store.
+ * @param int    $user_id         The ID of the user to store the discount for.
+ * @param object $discount_object The object containing all info about the discount.
+ *
+ * @return void
+ */
 function rcp_store_discount_use_for_user( $code, $user_id, $discount_object ) {
 
 	$user_discounts = get_user_meta( $user_id, 'rcp_user_discounts', true) ;
@@ -200,14 +213,15 @@ function rcp_store_discount_use_for_user( $code, $user_id, $discount_object ) {
 
 }
 
-
-/*
-* Checks whether a user has used a particular discount code
-* This is used to preventing users from spamming discount codes
-* @param int $user_id - the ID of the user to checl
-* @param string $code - the discount code to check against the user ID
-* return boolean
-*/
+/**
+ * Checks whether a user has used a particular discount code.
+ * This is used to prevent users from spamming discount codes.
+ *
+ * @param int    $user_id The ID of the user to check.
+ * @param string $code    The discount code to check against the user ID.
+ *
+ * @return bool
+ */
 function rcp_user_has_used_discount( $user_id, $code ) {
 
 	$ret = false;
@@ -226,10 +240,13 @@ function rcp_user_has_used_discount( $user_id, $code ) {
 	return apply_filters( 'rcp_user_has_used_discount', $ret, $user_id, $code );
 }
 
-/*
-* Increase the usage count of a discount code
-* @param int $code - the ID of the discount
-*/
+/**
+ * Increase the usage count of a discount code.
+ *
+ * @param int $code_id The ID of the discount.
+ *
+ * @return void
+ */
 function rcp_increase_code_use( $code_id ) {
 	global $wpdb, $rcp_discounts_db_name;
 	// add the post ID to the count database if it doesn't already exist
@@ -245,11 +262,13 @@ function rcp_increase_code_use( $code_id ) {
 	}
 }
 
-/*
-* Returns the number of times a discount code has been used
-* @param int/string $code - the ID or code of the discount
-* return The number of times the discount code has been used
-*/
+/**
+ * Returns the number of times a discount code has been used.
+ *
+ * @param int|string $code The ID or code of the discount.
+ *
+ * @return int|string The number of times the discount code has been used or the string 'None'.
+ */
 function rcp_count_discount_code_uses( $code ) {
 	global $wpdb, $rcp_discounts_db_name;
 	if( is_int( $code ) ) {
@@ -265,6 +284,15 @@ function rcp_count_discount_code_uses( $code ) {
 		return __( 'None', 'rcp' );
 }
 
+/**
+ * Returns a formatted discount amount with a '%' sign appended (percentage-based) or with the
+ * currency sign added to the amount (flat discount rate).
+ *
+ * @param float  $amount Discount amount.
+ * @param string $type   Discount amount - either '%' or 'flat'.
+ *
+ * @return string
+ */
 function rcp_discount_sign_filter( $amount, $type ) {
 	$discount = '';
 	if( $type == '%' ) {
@@ -275,6 +303,16 @@ function rcp_discount_sign_filter( $amount, $type ) {
 	return $discount;
 }
 
+/**
+ * Check PayPal return price after applying discount.
+ *
+ * @param float $price
+ * @param float $amount
+ * @param float $amount2
+ * @param int $user_id
+ *
+ * @return bool
+ */
 function rcp_check_paypal_return_price_after_discount( $price, $amount, $amount2, $user_id ) {
 	// get an array of all discount codes this user has used
 	$user_discounts = get_user_meta( $user_id, 'rcp_user_discounts', true );

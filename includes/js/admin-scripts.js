@@ -130,16 +130,18 @@ jQuery(document).ready(function($) {
 	$('.rcp_delete_subscription').click(function() {
 		if(confirm(rcp_vars.delete_subscription)) {
 			return true;
-		} else {
-			return false;
 		}
 		return false;
 	});
 	$('.rcp-delete-payment').click(function() {
 		if(confirm(rcp_vars.delete_payment)) {
 			return true;
-		} else {
-			return false;
+		}
+		return false;
+	});
+	$('.rcp_delete_discount').click(function() {
+		if(confirm(rcp_vars.delete_discount)) {
+			return true;
 		}
 		return false;
 	});
@@ -150,16 +152,10 @@ jQuery(document).ready(function($) {
 		}
 		return true;
 	});
-	$('#rcp-price-select').change(function() {
-		var free = $('option:selected', this).val();
-		if(free == 'free') {
-			$('#rcp-price').val(0);
-		}
-	});
 	// make columns sortable via drag and drop
 	if( $('.rcp-subscriptions tbody').length ) {
 		$(".rcp-subscriptions tbody").sortable({
-			handle: '.dragHandle', items: '.rcp-subscription', opacity: 0.6, cursor: 'move', axis: 'y', update: function() {
+			handle: '.rcp-drag-handle', items: '.rcp-subscription', opacity: 0.6, cursor: 'move', axis: 'y', update: function() {
 				var order = $(this).sortable("serialize") + '&action=update-subscription-order';
 				$.post(ajaxurl, order, function(response) {
 					// response here
@@ -292,6 +288,61 @@ jQuery(document).ready(function($) {
 			$('#rcp-members-form .rcp-member-cb').prop('checked', true );
 		} else {
 			$('#rcp-members-form .rcp-member-cb').prop('checked', false );
+		}
+	});
+
+
+	// Cancel user's subscription when updating status to "Cancelled".
+	$('#rcp-status').on('change', function () {
+		if ( 'cancelled' == $(this).val() ) {
+			if ( rcp_vars.can_cancel_member ) {
+				$(this).parent().append('<p id="rcp-cancel-subscription-wrap"><input type="checkbox" id="rcp-cancel-subscription" name="cancel_subscription" value="1"><label for="rcp-cancel-subscription">' + rcp_vars.cancel_subscription + '</label></p>');
+			}
+			$('#rcp-revoke-access-wrap').show();
+		} else {
+			$('#rcp-cancel-subscription-wrap').remove();
+			$('#rcp-revoke-access-wrap').hide();
+		}
+	});
+
+	// Show "Revoke access now" checkbox when marking as cancelled via bulk edit.
+	$('#rcp-bulk-member-action').on('change', function () {
+		if ('mark-cancelled' == $(this).val()) {
+			$('#rcp-revoke-access-wrap').show();
+		} else {
+			$('#rcp-revoke-access-wrap').hide();
+		}
+	});
+
+	// Show/hide auto renew default based on settings.
+	$('#rcp_settings_auto_renew').on('change', function() {
+		if( '3' == $(this).val() ) {
+			$(this).parents('tr').next().css('display', 'table-row');
+		} else {
+			$(this).parents('tr').next().css('display', 'none');
+		}
+	});
+
+	// Show/hide email fields based on their activation state.
+	$('.rcp-disable-email').on('change', function () {
+		var subject  = $(this).parents('tr').next();
+		var body     = subject.next();
+		var disabled = false;
+
+		if( 'SELECT' == $(this).prop('tagName') && 'off' == $(this).val() ) {
+			// Select dropdowns, like email verification.
+			disabled = true;
+		} else {
+			// Checkboxes.
+			disabled = $(this).prop('checked');
+		}
+
+		if( true === disabled ) {
+			subject.css('display', 'none');
+			body.css('display', 'none');
+		} else {
+			subject.css('display', 'table-row');
+			body.css('display', 'table-row');
 		}
 	});
 

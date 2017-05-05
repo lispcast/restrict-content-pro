@@ -1,10 +1,21 @@
 <?php
+/**
+ * Checkout Functions
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Gateways/2Checkout/Functions
+ * @copyright   Copyright (c) 2017, Pippin Williamson
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 /**
  * Cancel a 2checkout subscriber
  *
+ * @param int $member_id ID of the member to cancel.
+ *
  * @access      private
  * @since       2.4
+ * @return      bool|WP_Error
  */
 function rcp_2checkout_cancel_member( $member_id = 0 ) {
 
@@ -68,9 +79,10 @@ function rcp_2checkout_cancel_member( $member_id = 0 ) {
 /**
  * Determine if a member is a 2Checkout Customer
  *
+ * @param int $user_id The ID of the user to check
+ *
  * @since       2.4
  * @access      public
- * @param       $user_id INT the ID of the user to check
  * @return      bool
 */
 function rcp_is_2checkout_subscriber( $user_id = 0 ) {

@@ -1,3 +1,19 @@
+<?php
+/**
+ * Card Form
+ *
+ * This template is for displaying credit card form details. It's shown on the registration
+ * form when selecting a gateway that supports taking credit/debit card details directly.
+ *
+ * For modifying this template, please see: http://docs.restrictcontentpro.com/article/1738-template-files
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Templates/Card Form
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+?>
+
 <fieldset class="rcp_card_fieldset">
 	<p id="rcp_card_number_wrap">
 		<label><?php _e( 'Card Number', 'rcp' ); ?></label>

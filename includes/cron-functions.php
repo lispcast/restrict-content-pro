@@ -1,5 +1,29 @@
 <?php
+/**
+ * Cron Functions
+ *
+ * Schedules events.
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Cron Functions
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
+/**
+ * Set up the following cron job events:
+ *
+ * Daily: Expired users check
+ * @see rcp_check_for_expired_users()
+ *
+ * Daily: Send expiring soon notices
+ * @see rcp_check_for_soon_to_expire_users()
+ *
+ * Daily: Check and update member counts
+ * @see rcp_check_member_counts()
+ *
+ * @return void
+ */
 function rcp_setup_cron_jobs() {
 
 	if ( ! wp_next_scheduled( 'rcp_expired_users_check' ) ) {
@@ -16,7 +40,16 @@ function rcp_setup_cron_jobs() {
 }
 add_action('wp', 'rcp_setup_cron_jobs');
 
-// runs each day and checks for expired members. Each member gets an email 1-2 days after their expiration
+/**
+ * Check for expired users
+ *
+ * Runs each day and checks for expired users. If their account has expired, their status
+ * is updated to "expired" and, based on settings, they may receive an email.
+ *
+ * @see rcp_email_on_expiration()
+ *
+ * @return void
+ */
 function rcp_check_for_expired_users() {
 
 	global $wpdb;
@@ -54,8 +87,17 @@ function rcp_check_for_expired_users() {
 //add_action( 'admin_init', 'rcp_check_for_expired_users' );
 add_action( 'rcp_expired_users_check', 'rcp_check_for_expired_users' );
 
-
-// runs each day and checks for expired members. Each member gets an email on the day of their expiration
+/**
+ * Check for soon-to-expire users
+ *
+ * Runs each day and checks for members that are soon to expire. Based on settings, each
+ * member gets sent an expiry notice email.
+ *
+ * @uses rcp_get_renewal_reminder_period()
+ * @uses rcp_email_expiring_notice()
+ *
+ * @return void
+ */
 function rcp_check_for_soon_to_expire_users() {
 
 	$renewal_period = rcp_get_renewal_reminder_period();
@@ -102,6 +144,7 @@ function rcp_check_for_soon_to_expire_users() {
 
 			rcp_email_expiring_notice( $member );
 			add_user_meta( $member, '_rcp_expiring_soon_email_sent', 'yes' );
+			rcp_add_member_note( $member, __( 'Expiration notice was emailed to the member.', 'rcp' ) );
 
 		}
 	}

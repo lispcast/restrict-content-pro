@@ -1,4 +1,18 @@
-<?php global $rcp_password_form_args; ?>
+<?php
+/**
+ * Change Password Form
+ *
+ * This form is for changing an account password.
+ *
+ * For modifying this template, please see: http://docs.restrictcontentpro.com/article/1738-template-files
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Templates/Change Password Form
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+global $rcp_password_form_args; ?>
 
 <?php rcp_show_error_messages( 'password' ); ?>
 
@@ -21,7 +35,7 @@
 			<input type="hidden" name="rcp_action" value="reset-password"/>
 			<input type="hidden" name="rcp_redirect" value="<?php echo esc_url( $rcp_password_form_args['redirect'] ); ?>"/>
 			<input type="hidden" name="rcp_password_nonce" value="<?php echo wp_create_nonce('rcp-password-nonce' ); ?>"/>
-			<input id="rcp_password_submit" type="submit" value="<?php echo apply_filters( 'rcp_registration_change_password_button', __( 'Change Password', 'rcp' ) ); ?>"/>
+			<input id="rcp_password_submit" type="submit" value="<?php esc_attr_e( apply_filters( 'rcp_registration_change_password_button', __( 'Change Password', 'rcp' ) ) ); ?>"/>
 		</p>
 	</fieldset>
 </form>

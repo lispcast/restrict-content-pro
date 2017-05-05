@@ -3,7 +3,8 @@
  * PayPal Express Gateway class
  *
  * @package     Restrict Content Pro
- * @copyright   Copyright (c) 2012, Pippin Williamson
+ * @subpackage  Classes/Gateways/PayPal Express
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       2.1
 */
@@ -19,7 +20,9 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 	/**
 	 * Get things going
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function init() {
 
@@ -28,6 +31,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 		$this->supports[]  = 'one-time';
 		$this->supports[]  = 'recurring';
 		$this->supports[]  = 'fees';
+		$this->supports[] = 'trial';
 
 		if( $this->test_mode ) {
 
@@ -56,7 +60,9 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 	/**
 	 * Process registration
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_signup() {
 
@@ -65,7 +71,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 		if( $this->auto_renew ) {
 			$amount = $this->amount;
 		} else {
-			$amount = round( $this->amount + $this->signup_fee, 2 );
+			$amount = $this->initial_amount;
 		}
 
 		$args = array(
@@ -101,6 +107,10 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 			$args['RETURNURL']                      = add_query_arg( array( 'rcp-recurring' => '1' ), $args['RETURNURL'] );
 		}
 
+		if ( $this->is_trial() ) {
+			$args['PAYMENTREQUEST_0_CUSTOM'] .= '|trial';
+		}
+
 		$request = wp_remote_post( $this->api_endpoint, array( 'timeout' => 45, 'sslverify' => false, 'httpversion' => '1.1', 'body' => $args ) );
 		$body    = wp_remote_retrieve_body( $request );
 		$code    = wp_remote_retrieve_response_code( $request );
@@ -108,6 +118,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 		if( is_wp_error( $request ) ) {
 
+			do_action( 'rcp_registration_failed', $this );
 			do_action( 'rcp_paypal_express_signup_payment_failed', $request, $this );
 
 			$error = '<p>' . __( 'An unidentified error occurred.', 'rcp' ) . '</p>';
@@ -122,6 +133,8 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 			}
 
 			if( 'failure' === strtolower( $body['ACK'] ) ) {
+
+				do_action( 'rcp_registration_failed', $this );
 
 				$error = '<p>' . __( 'PayPal token creation failed.', 'rcp' ) . '</p>';
 				$error .= '<p>' . __( 'Error message:', 'rcp' ) . ' ' . $body['L_LONGMESSAGE0'] . '</p>';
@@ -139,6 +152,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 		} else {
 
+			do_action( 'rcp_registration_failed', $this );
 			wp_die( __( 'Something has gone wrong, please try again', 'rcp' ), __( 'Error', 'rcp' ), array( 'back_link' => true, 'response' => '401' ) );
 
 		}
@@ -148,7 +162,9 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 	/**
 	 * Validate additional fields during registration submission
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function validate_fields() {
 
@@ -161,7 +177,9 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 	/**
 	 * Process payment confirmation after returning from PayPal
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_confirmation() {
 
@@ -184,7 +202,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 					'BILLINGPERIOD'       => ucwords( $details['subscription']['duration_unit'] ),
 					'BILLINGFREQUENCY'    => $details['subscription']['duration'],
 					'AMT'                 => $details['AMT'],
-					'INITAMT'             => round( $details['AMT'] + $details['subscription']['fee'], 2 ),
+					'INITAMT'             => $details['initial_amount'],
 					'CURRENCYCODE'        => $details['CURRENCYCODE'],
 					'FAILEDINITAMTACTION' => 'CancelOnFailure',
 					'L_BILLINGTYPE0'      => 'RecurringPayments',
@@ -193,6 +211,13 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 				);
 
 				if ( $args['INITAMT'] < 0 ) {
+					unset( $args['INITAMT'] );
+				}
+
+				if ( $details['is_trial'] ) {
+					// Set profile start date to the end of the free trial.
+					$args['PROFILESTARTDATE'] = date( 'Y-m-d\TH:i:s', strtotime( '+' . $details['subscription']['trial_duration'] . ' ' . $details['subscription']['trial_duration_unit'], current_time( 'timestamp' ) ) );
+
 					unset( $args['INITAMT'] );
 				}
 
@@ -224,10 +249,11 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 					} else {
 
-						$member = new RCP_Member( $details['PAYMENTREQUEST_0_CUSTOM'] );
+						$custom = explode( '|', $details['PAYMENTREQUEST_0_CUSTOM'] );
+						$member = new RCP_Member( $custom[0] );
 
-						if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
-							$cancelled = rcp_cancel_member_payment_profile( $member->ID, false);
+						if( $member->just_upgraded() && $member->can_cancel() ) {
+							$cancelled = $member->cancel_payment_profile( false );
 						}
 
 						$member->set_payment_profile_id( $body['PROFILEID'] );
@@ -297,9 +323,9 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 						// Confirm a one-time payment
 						$member = new RCP_Member( $details['CUSTOM'] );
 
-						if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
+						if( $member->just_upgraded() && $member->can_cancel() ) {
 
-							$cancelled = rcp_cancel_member_payment_profile( $member->ID, false );
+							$cancelled = $member->cancel_payment_profile( false );
 
 							if( $cancelled ) {
 
@@ -366,7 +392,9 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 	/**
 	 * Process PayPal IPN
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_webhooks() {
 
@@ -495,13 +523,22 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 				if( ! $member->just_upgraded() ) {
 
-					// user is marked as cancelled but retains access until end of term
-					$member->set_status( 'cancelled' );
+					if( isset( $posted['initial_payment_status'] ) && 'Failed' == $posted['initial_payment_status'] ) {
+						// Initial payment failed, so set the user back to pending.
+						$member->set_status( 'pending' );
+						$member->add_note( __( 'Initial payment failed in PayPal Express.', 'rcp' ) );
 
-					// set the use to no longer be recurring
-					delete_user_meta( $user_id, 'rcp_paypal_subscriber' );
+						do_action( 'rcp_registration_failed', $this );
+						do_action( 'rcp_paypal_express_initial_payment_failed', $member, $posted, $this );
+					} else {
+						// user is marked as cancelled but retains access until end of term
+						$member->cancel();
 
-					do_action( 'rcp_ipn_subscr_cancel', $user_id );
+						// set the use to no longer be recurring
+						delete_user_meta( $user_id, 'rcp_paypal_subscriber' );
+
+						do_action( 'rcp_ipn_subscr_cancel', $user_id );
+					}
 
 					die( 'successful recurring_payment_profile_cancel' );
 
@@ -512,13 +549,25 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 			case "recurring_payment_failed" :
 			case "recurring_payment_suspended_due_to_max_failed_payment" :
 
-				if( 'cancelled' !== $member->get_status( $user_id ) ) {
+				if( 'cancelled' !== $member->get_status() ) {
 
 					$member->set_status( 'expired' );
 
 				}
 
+				if ( ! empty( $posted['txn_id'] ) ) {
+
+					$this->webhook_event_id = sanitize_text_field( $posted['txn_id'] );
+
+				} elseif ( ! empty( $posted['ipn_track_id'] ) ) {
+
+					$this->webhook_event_id = sanitize_text_field( $posted['ipn_track_id'] );
+				}
+
 				do_action( 'rcp_ipn_subscr_failed' );
+
+				do_action( 'rcp_recurring_payment_failed', $member, $this );
+
 				die( 'successful recurring_payment_failed or recurring_payment_suspended_due_to_max_failed_payment' );
 
 				break;
@@ -529,8 +578,8 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 					case 'completed' :
 
-						if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
-							$cancelled = rcp_cancel_member_payment_profile( $member->ID, false );
+						if( $member->just_upgraded() && $member->can_cancel() ) {
+							$cancelled = $member->cancel_payment_profile( false );
 							if( $cancelled ) {
 
 								$member->set_payment_profile_id( '' );
@@ -550,8 +599,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 						$rcp_payments->insert( $payment_data );
 
-						// set this user to active
-						$member->renew();
+						// Member was already activated.
 
 						break;
 
@@ -559,7 +607,7 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 					case 'expired' :
 					case 'failed' :
 					case 'voided' :
-						$member->set_status( 'cancelled' );
+						$member->cancel();
 						break;
 
 				endswitch;
@@ -573,6 +621,13 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 
 	}
 
+	/**
+	 * Get checkout details
+	 *
+	 * @param string $token
+	 *
+	 * @return array|bool|string|WP_Error
+	 */
 	public function get_checkout_details( $token = '' ) {
 
 		$args = array(
@@ -607,7 +662,14 @@ class RCP_Payment_Gateway_PayPal_Express extends RCP_Payment_Gateway {
 				$subscription_id = $member->get_subscription_id();
 			}
 
-			$body['subscription'] = (array) rcp_get_subscription_details( $subscription_id );
+			$body['subscription']   = (array) rcp_get_subscription_details( $subscription_id );
+			$body['initial_amount'] = get_user_meta( $member->ID, 'rcp_pending_subscription_amount', true );
+
+			$custom = explode( '|', $body['PAYMENTREQUEST_0_CUSTOM'] );
+
+			if ( ! empty( $custom[1] ) && 'trial' === $custom[1] && ! empty( $body['subscription']['trial_duration'] ) && ! empty( $body['subscription']['trial_duration_unit'] ) ) {
+				$body['is_trial'] = true;
+			}
 
 			return $body;
 

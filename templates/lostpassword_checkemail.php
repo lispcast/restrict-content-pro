@@ -1,4 +1,18 @@
-<?php if( ! is_user_logged_in() ) : ?>
+<?php
+/**
+ * Lost Password - Check Email
+ *
+ * This message is shown after filling out the lost password form.
+ *
+ * For modifying this template, please see: http://docs.restrictcontentpro.com/article/1738-template-files
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Templates/Lost Password/Check Email
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+if( ! is_user_logged_in() ) : ?>
 
     <?php do_action( 'rcp_before_lostpassword_checkemail_message' ); ?>
 

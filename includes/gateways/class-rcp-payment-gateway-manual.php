@@ -3,7 +3,8 @@
  * Manual Payment Gateway
  *
  * @package     Restrict Content Pro
- * @copyright   Copyright (c) 2012, Pippin Williamson
+ * @subpackage  Classes/Gateways/Manual
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       2.1
 */
@@ -13,11 +14,11 @@ class RCP_Payment_Gateway_Manual extends RCP_Payment_Gateway {
 	/**
 	 * Get things going
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function init() {
-
-		global $rcp_options;
 
 		$this->supports[]  = 'one-time';
 		$this->supports[]  = 'fees';
@@ -27,12 +28,23 @@ class RCP_Payment_Gateway_Manual extends RCP_Payment_Gateway {
 	/**
 	 * Process registration
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_signup() {
 
 		$member = new RCP_Member( $this->user_id );
-		$member->renew( false, '' );
+
+		$old_level = get_user_meta( $member->ID, '_rcp_old_subscription_id', true );
+		if ( ! empty( $old_level ) && $old_level == $this->subscription_id ) {
+			$expiration = $member->calculate_expiration();
+		} else {
+			delete_user_meta( $member->ID, 'rcp_pending_expiration_date' );
+			$expiration = $member->calculate_expiration( true );
+		}
+
+		$member->renew( false, 'pending', $expiration );
 
 		// setup the payment info in an array for storage
 		$payment_data = array(
@@ -45,7 +57,9 @@ class RCP_Payment_Gateway_Manual extends RCP_Payment_Gateway {
 		);
 
 		$rcp_payments = new RCP_Payments();
-		$rcp_payments->insert( $payment_data );
+		$payment_id   = $rcp_payments->insert( $payment_data );
+
+		do_action( 'rcp_process_manual_signup', $member, $payment_id, $this );
 
 		wp_redirect( $this->return_url ); exit;
 

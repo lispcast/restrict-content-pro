@@ -1,9 +1,18 @@
 <?php
+/**
+ * Admin Pages
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Pages
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
-/*******************************************
-* Restrict Content Admin Pages
-*******************************************/
-
+/**
+ * Create admin menus and sub-menus
+ *
+ * @return void
+ */
 function rcp_settings_menu() {
 
 	global $rcp_members_page, $rcp_subscriptions_page, $rcp_discounts_page, $rcp_payments_page,

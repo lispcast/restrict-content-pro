@@ -1,4 +1,13 @@
 <?php
+/**
+ * WP Approve User Integration
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Integrations/WP Approve User
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ * @since       2.4
+ */
 
 class RCP_WP_Approve_User {
 
@@ -41,8 +50,11 @@ class RCP_WP_Approve_User {
 	/**
 	 * Determine if member is pending
 	 *
+	 * @param int $user_id
+	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  bool
 	 */
 	private function is_pending( $user_id = 0 ) {
 		return (bool) is_user_logged_in() && ! get_user_meta( $user_id, 'wp-approve-user', true ) && ! user_can( $user_id, 'edit_pages' );
@@ -53,6 +65,7 @@ class RCP_WP_Approve_User {
 	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  bool
 	 */
 	public function users_can_register() {
 
@@ -65,6 +78,7 @@ class RCP_WP_Approve_User {
 	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  void
 	 */
 	public function redirect_wp_signup() {
 		global $rcp_options;
@@ -77,8 +91,14 @@ class RCP_WP_Approve_User {
 	/**
 	 * Block pending members from seeing content
 	 *
+	 * @param bool       $can_access
+	 * @param int        $member_id
+	 * @param int        $post_id
+	 * @param RCP_Member $member
+	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  bool
 	 */
 	public function can_access( $can_access, $member_id, $post_id, $member ) {
 
@@ -96,8 +116,13 @@ class RCP_WP_Approve_User {
 	/**
 	 * Block pending members from seeing content protected with [restrict]
 	 *
+	 * @param bool  $can_access
+	 * @param int   $member_id
+	 * @param array $atts Shortcode attributes.
+	 *
 	 * @access  public
 	 * @since   2.5.4
+	 * @return  bool
 	 */
 	public function can_access_shortcode_content( $can_access, $member_id, $atts ) {
 
@@ -111,8 +136,11 @@ class RCP_WP_Approve_User {
 	/**
 	 * Display pending verification message when trying to access restricted content
 	 *
+	 * @param string $message
+	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  string
 	 */
 	public function pending_message( $message ) {
 
@@ -130,8 +158,11 @@ class RCP_WP_Approve_User {
 	/**
 	 * Display Approve | Unapprove links on member rows
 	 *
+	 * @param int $member_id
+	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  void
 	 */
 	public function member_row_actions( $member_id ) {
 
@@ -164,6 +195,7 @@ class RCP_WP_Approve_User {
 	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  void
 	 */
 	public function process_approve() {
 
@@ -194,6 +226,7 @@ class RCP_WP_Approve_User {
 	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  void
 	 */
 	public function process_unapprove() {
 
@@ -225,6 +258,7 @@ class RCP_WP_Approve_User {
 	 *
 	 * @access  public
 	 * @since   2.4
+	 * @return  void
 	 */
 	public function admin_notices() {
 

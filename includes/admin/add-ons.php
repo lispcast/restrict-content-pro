@@ -1,6 +1,11 @@
 <?php
 /**
- * Admin Add-ons
+ * Admin Add-Ons
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Add-Ons
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  */
 
 // Exit if accessed directly
@@ -69,7 +74,9 @@ function rcp_add_ons_admin() {
  *
  * Gets the add-ons page feed.
  *
- * @return void
+ * @param string $tab Which type of add-ons to retrieve.
+ *
+ * @return string
  */
 function rcp_add_ons_get_feed( $tab = 'pro' ) {
 

@@ -1,12 +1,21 @@
 <?php
+/**
+ * Edit Discount Code
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Edit Discount
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
 $code = rcp_get_discount_details( urldecode( $_GET['edit_discount'] ) );
 ?>
-<h2>
+<h1>
 	<?php _e( 'Edit Discount Code:', 'rcp' ); echo ' ' . $code->name; ?>
 	<a href="<?php echo admin_url( '/admin.php?page=rcp-discounts' ); ?>" class="add-new-h2">
 		<?php _e( 'Cancel', 'rcp' ); ?>
 	</a>
-</h2>
+</h1>
 <form id="rcp-edit-discount" action="" method="post">
 	<table class="form-table">
 		<tbody>

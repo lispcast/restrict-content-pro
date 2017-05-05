@@ -1,4 +1,13 @@
 <?php
+/**
+ * Google Authenticator Integration
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Integrations/Google Authenticator
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ * @since       2.2
+ */
 
 class RCP_Google_Authenticator {
 	
@@ -26,19 +35,22 @@ class RCP_Google_Authenticator {
 	 * @since   2.2
 	 */
 	public function auth_code_input() {
-?>
+		?>
 		<p>
 			<label for="googleotp"><?php _e( 'Google Authenticator Code', 'rcp' ); ?></label>
 			<input type="text" name="googleotp" id="googleotp" class="rcp-input" value="" size="20" style="ime-mode: inactive;" />
 		</p>
-<?php		
+		<?php
 	}
 
 	/**
 	 * Verify the entered code
 	 *
+	 * @param $post_data
+	 *
 	 * @access  public
 	 * @since   2.2
+	 * @return  void
 	 */
 	public function check_code( $post_data ) {
 

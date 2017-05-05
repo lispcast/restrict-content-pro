@@ -1,5 +1,16 @@
 <?php
+/**
+ * Help Menus Setup
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Help Menus Setup
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
+/**
+ * Setup help tabs
+ */
 function rcp_help_tabs() {
 	global $rcp_members_page;
 	global $rcp_subscriptions_page;
@@ -128,6 +139,13 @@ function rcp_help_tabs() {
 			);
 			$screen->add_help_tab(
 				array(
+					'id' => 'pages',
+					'title' => __( 'Pages', 'rcp' ),
+					'content' => rcp_render_settings_tab_content( 'pages' )
+				)
+			);
+			$screen->add_help_tab(
+				array(
 					'id' => 'messages',
 					'title' => __( 'Messages', 'rcp' ),
 					'content' => rcp_render_settings_tab_content( 'messages' )
@@ -135,16 +153,9 @@ function rcp_help_tabs() {
 			);
 			$screen->add_help_tab(
 				array(
-					'id' => 'paypal',
-					'title' => __( 'PayPal', 'rcp' ),
-					'content' => rcp_render_settings_tab_content( 'paypal' )
-				)
-			);
-			$screen->add_help_tab(
-				array(
-					'id' => 'signup_forms',
-					'title' => __( 'Signup Forms', 'rcp' ),
-					'content' => rcp_render_settings_tab_content( 'signup_forms' )
+					'id' => 'payments',
+					'title' => __( 'Payments', 'rcp' ),
+					'content' => rcp_render_settings_tab_content( 'payments' )
 				)
 			);
 			$screen->add_help_tab(
@@ -152,6 +163,13 @@ function rcp_help_tabs() {
 					'id' => 'emails',
 					'title' => __( 'Emails', 'rcp' ),
 					'content' => rcp_render_settings_tab_content( 'emails' )
+				)
+			);
+			$screen->add_help_tab(
+				array(
+					'id' => 'invoices',
+					'title' => __( 'Invoices', 'rcp' ),
+					'content' => rcp_render_settings_tab_content( 'invoices' )
 				)
 			);
 			$screen->add_help_tab(

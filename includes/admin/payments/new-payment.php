@@ -1,9 +1,20 @@
-<h2>
+<?php
+/**
+ * New Payment Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/New Payment
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+?>
+
+<h1>
 	<?php _e( 'Create Payment', 'rcp' ); ?> -
 	<a href="<?php echo admin_url( '/admin.php?page=rcp-payments' ); ?>" class="button-secondary">
 		<?php _e( 'Cancel', 'rcp' ); ?>
 	</a>
-</h2>
+</h1>
 <form id="rcp-add-payment" action="" method="post">
 	<table class="form-table">
 		<tbody>
@@ -23,7 +34,7 @@
 					<label for="rcp-amount"><?php _e( 'Amount', 'rcp' ); ?></label>
 				</th>
 				<td>
-					<input name="amount" id="rcp-amount" pattern="^[+-]?[0-9]{1,3}(?:,?[0-9]{3})*\.[0-9]{2}$" title="<?php _e( 'Please enter a payment amount in the format of 1.99', 'rcp' ); ?>" min="0.00" value=""/>
+					<input name="amount" id="rcp-amount" pattern="^[+\-]?[0-9]{1,3}(?:,?[0-9]{3})*(\.[0-9]{2})?$" title="<?php _e( 'Please enter a payment amount in the format of 1.99', 'rcp' ); ?>" min="0.00" value=""/>
 					<p class="description"><?php _e( 'The amount of this payment', 'rcp' ); ?></p>
 				</td>
 			</tr>

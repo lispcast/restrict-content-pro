@@ -1,15 +1,28 @@
 <?php
+/**
+ * Export Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Export
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
+/**
+ * Render the export page
+ *
+ * @return void
+ */
 function rcp_export_page() {
 	global $rcp_options, $rcp_db_name, $wpdb;
 	$current_page = admin_url( '/admin.php?page=rcp-export' );
 	?>
 	<div class="wrap">
-		<h2><?php _e( 'Export', 'rcp' ); ?></h2>
+		<h1><?php _e( 'Export', 'rcp' ); ?></h1>
 
 		<?php do_action( 'rcp_export_page_top' ); ?>
 
-		<h3><?php _e( 'Members Export', 'rcp' ); ?></h3>
+		<h2><?php _e( 'Members Export', 'rcp' ); ?></h2>
 		<p><?php _e( 'Download member data as a CSV file. This is useful for tasks such as importing batch users into MailChimp, or other systems.', 'rcp' ); ?></p>
 		<form id="rcp_export" action="<?php echo $current_page; ?>" method="post">
 			<p>
@@ -44,7 +57,7 @@ function rcp_export_page() {
 		</form>
 
 		<!-- payments export -->
-		<h3><?php _e( 'Payments Export', 'rcp' ); ?></h3>
+		<h2><?php _e( 'Payments Export', 'rcp' ); ?></h2>
 		<p><?php _e( 'Download payment data as a CSV file. Use this file for your own record keeping or tracking.', 'rcp' ); ?></p>
 		<form id="rcp_export" action="<?php echo esc_url( $current_page ); ?>" method="post">
 			<p>

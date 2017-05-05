@@ -1,9 +1,10 @@
 <?php
 /**
- * PayPal Express Gateway class
+ * PayPal Pro Gateway class
  *
  * @package     Restrict Content Pro
- * @copyright   Copyright (c) 2012, Pippin Williamson
+ * @subpackage  Classes/Gateways/PayPal Pro
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       2.1
 */
@@ -18,7 +19,9 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 	/**
 	 * Get things going
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function init() {
 
@@ -27,6 +30,7 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 		$this->supports[]  = 'one-time';
 		$this->supports[]  = 'recurring';
 		$this->supports[]  = 'fees';
+		$this->supports[] = 'trial';
 
 		if( $this->test_mode ) {
 
@@ -53,11 +57,22 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 	/**
 	 * Process registration
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_signup() {
 
 		global $rcp_options;
+
+		if ( is_user_logged_in() ) {
+			$user_data  = get_userdata( $this->user_id );
+			$first_name = $user_data->first_name;
+			$last_name  = $user_data->last_name;
+		} else {
+			$first_name = $_POST['rcp_user_first'];
+			$last_name  = $_POST['rcp_user_last'];
+		}
 
 		$args = array(
 			'USER'               => $this->username,
@@ -65,16 +80,22 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 			'SIGNATURE'          => $this->signature,
 			'VERSION'            => '124',
 			'METHOD'             => $this->auto_renew ? 'CreateRecurringPaymentsProfile' : 'DoDirectPayment',
-			'AMT'                => $this->amount,
+			'AMT'                => $this->auto_renew ? $this->amount : $this->initial_amount,
 			'CURRENCYCODE'       => strtoupper( $this->currency ),
 			'SHIPPINGAMT'        => 0,
 			'TAXAMT'             => 0,
 			'DESC'               => $this->subscription_name,
-			'SOFTDESCRIPTOR'     => get_bloginfo( 'name' ) . ': ' . $this->subscription_name,
+			'SOFTDESCRIPTOR'     => get_bloginfo( 'name' ) . ' - ' . $this->subscription_name,
 			'SOFTDESCRIPTORCITY' => get_bloginfo( 'admin_email' ),
 			'CUSTOM'             => $this->user_id,
 			'NOTIFYURL'          => add_query_arg( 'listener', 'EIPN', home_url( 'index.php' ) ),
 			'EMAIL'              => $this->email,
+			'FIRSTNAME'          => sanitize_text_field( $first_name ),
+			'LASTNAME'           => sanitize_text_field( $last_name ),
+			'STREET'             => sanitize_text_field( $_POST['rcp_card_address'] ),
+			'CITY'               => sanitize_text_field( $_POST['rcp_card_city'] ),
+			'STATE'              => sanitize_text_field( $_POST['rcp_card_state'] ),
+			'COUNTRYCODE'        => sanitize_text_field( $_POST['rcp_card_country'] ),
 			'CREDITCARDTYPE'     => '',
 			'ACCT'               => sanitize_text_field( $_POST['rcp_card_number'] ),
 			'EXPDATE'            => sanitize_text_field( $_POST['rcp_card_exp_month'] . $_POST['rcp_card_exp_year'] ), // needs to be in the format 062019
@@ -90,21 +111,27 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 
 		if ( $this->auto_renew ) {
 
-			$initamt = round( $this->amount + $this->signup_fee, 2 );
-
-			if ( $initamt >= 0 ) {
-				$args['INITAMT'] = $initamt;
+			if ( $this->initial_amount >= 0 ) {
+				$args['INITAMT'] = $this->initial_amount;
 			}
 
 		}
 
-		$request = wp_remote_post( $this->api_endpoint, array( 'timeout' => 45, 'sslverify' => false, 'httpversion' => '1.1', 'body' => $args ) );
+		if ( $this->auto_renew && $this->is_trial() ) {
+			// Set profile start date to the end of the free trial.
+			$subscription = rcp_get_subscription_details( $this->subscription_id );
+			$args['PROFILESTARTDATE'] = date( 'Y-m-d\TH:i:s', strtotime( '+' . $subscription->trial_duration . ' ' . $subscription->trial_duration_unit, current_time( 'timestamp' ) ) );
+			unset( $args['INITAMT'] );
+		}
+
+		$request = wp_remote_post( $this->api_endpoint, array( 'timeout' => 45, 'sslverify' => false, 'httpversion' => '1.1', 'body' => apply_filters( 'rcp_paypal_pro_args', $args, $this ) ) );
 		$body    = wp_remote_retrieve_body( $request );
 		$code    = wp_remote_retrieve_response_code( $request );
 		$message = wp_remote_retrieve_response_message( $request );
 
 		if( is_wp_error( $request ) ) {
 
+			do_action( 'rcp_registration_failed', $this );
 			do_action( 'rcp_paypal_pro_signup_payment_failed', $request, $this );
 
 			$error = '<p>' . __( 'An unidentified error occurred.', 'rcp' ) . '</p>';
@@ -120,6 +147,7 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 
 			if( false !== strpos( strtolower( $body['ACK'] ), 'failure' ) ) {
 
+				do_action( 'rcp_registration_failed', $this );
 				do_action( 'rcp_paypal_pro_signup_payment_failed', $request, $this );
 
 				$error = '<p>' . __( 'PayPal subscription creation failed.', 'rcp' ) . '</p>';
@@ -133,9 +161,9 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 				// Successful signup
 				$member = new RCP_Member( $this->user_id );
 
-				if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
+				if( $member->just_upgraded() && $member->can_cancel() ) {
 
-					$cancelled = rcp_cancel_member_payment_profile( $member->ID, false );
+					$cancelled = $member->cancel_payment_profile( false );
 
 				}
 
@@ -143,7 +171,7 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 					$member->set_payment_profile_id( $body['PROFILEID'] );
 				}
 
-				if ( isset( $body['PROFILESTATUS'] ) && 'ActiveProfile' === $body['PROFILESTATUS'] ) {
+				if ( isset( $body['TRANSACTIONID'] ) && false !== strpos( strtolower( $body['ACK'] ), 'success' ) ) {
 					// Confirm a one-time payment
 					$member->renew( $this->auto_renew );
 				}
@@ -155,6 +183,7 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 
 		} else {
 
+			do_action( 'rcp_registration_failed', $this );
 			wp_die( __( 'Something has gone wrong, please try again', 'rcp' ), __( 'Error', 'rcp' ), array( 'back_link' => true, 'response' => '401' ) );
 
 		}
@@ -170,19 +199,37 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 	public function fields() {
 
 		ob_start();
-		rcp_get_template_part( 'card-form' );
+		rcp_get_template_part( 'card-form', 'full' );
 		return ob_get_clean();
 	}
 
 	/**
 	 * Validate additional fields during registration submission
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function validate_fields() {
 
 		if( ! rcp_has_paypal_api_access() ) {
 			$this->add_error( 'no_paypal_api', __( 'You have not configured PayPal API access. Please configure it in Restrict &rarr; Settings', 'rcp' ) );
+		}
+
+		if( empty( $_POST['rcp_card_address'] ) ) {
+			$this->add_error( 'missing_card_address', __( 'The address you have entered is invalid', 'rcp' ) );
+		}
+
+		if( empty( $_POST['rcp_card_city'] ) ) {
+			$this->add_error( 'missing_card_city', __( 'The city you have entered is invalid', 'rcp' ) );
+		}
+
+		if( empty( $_POST['rcp_card_state'] ) ) {
+			$this->add_error( 'missing_card_state', __( 'The state you have entered is invalid', 'rcp' ) );
+		}
+
+		if( empty( $_POST['rcp_card_country'] ) ) {
+			$this->add_error( 'missing_card_country', __( 'The country you have entered is invalid', 'rcp' ) );
 		}
 
 		if( empty( $_POST['rcp_card_number'] ) ) {
@@ -214,7 +261,9 @@ class RCP_Payment_Gateway_PayPal_Pro extends RCP_Payment_Gateway {
 	/**
 	 * Process webhooks
 	 *
-	 * @since 2.1
+	 * @access public
+	 * @since  2.1
+	 * @return void
 	 */
 	public function process_webhooks() {
 

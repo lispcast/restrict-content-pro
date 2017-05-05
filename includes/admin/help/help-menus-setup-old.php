@@ -1,5 +1,24 @@
 <?php
+/**
+ * Help Menus Setup (old)
+ *
+ * For WP version less than 3.3
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Help Menus Setup
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
+/**
+ * Setup help tabs
+ *
+ * @param $contextual_help
+ * @param $screen_id
+ * @param $screen
+ *
+ * @return string
+ */
 function rcp_help_tabs_old($contextual_help, $screen_id, $screen) {
 	
 	global $rcp_members_page;

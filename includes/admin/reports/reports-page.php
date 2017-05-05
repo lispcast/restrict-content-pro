@@ -1,11 +1,20 @@
 <?php
+/**
+ * Reports Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Reports
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 /**
  * Renders the reports page
  *
  * @access  public
  * @since   1.8
-*/
+ * @return  void
+ */
 function rcp_reports_page() {
 	$current_page = admin_url( 'admin.php?page=rcp-reports' );
 	$active_tab = isset( $_GET[ 'tab' ] ) ? $_GET[ 'tab' ] : 'earnings';
@@ -30,8 +39,11 @@ function rcp_reports_page() {
 /**
  * Displays the earnings graph.
  *
+ * @uses rcp_get_report_dates()
+ *
  * @access  public
  * @since   1.8
+ * @return  void
 */
 function rcp_earnings_graph() {
 	global $rcp_options, $wpdb;
@@ -252,7 +264,7 @@ function rcp_earnings_graph() {
 			});
 	   });
 	</script>
-	<h2><?php _e( 'Earnings Report', 'rcp' ); ?></h2>
+	<h1><?php _e( 'Earnings Report', 'rcp' ); ?></h1>
 	<div class="metabox-holder" style="padding-top: 0;">
 		<div class="postbox">
 			<div class="inside">
@@ -272,7 +284,8 @@ add_action( 'rcp_reports_tab_earnings', 'rcp_earnings_graph' );
  *
  * @access  public
  * @since   2.5
-*/
+ * @return  void
+ */
 function rcp_refunds_graph() {
 	global $rcp_options, $wpdb;
 
@@ -489,7 +502,7 @@ function rcp_refunds_graph() {
 		    });
 	   });
     </script>
-	<h2><?php _e( 'Refunds Report', 'rcp' ); ?></h2>
+	<h1><?php _e( 'Refunds Report', 'rcp' ); ?></h1>
 	<div class="metabox-holder" style="padding-top: 0;">
 		<div class="postbox">
 			<div class="inside">
@@ -509,7 +522,8 @@ add_action( 'rcp_reports_tab_refunds', 'rcp_refunds_graph' );
  *
  * @access  public
  * @since   1.8
-*/
+ * @return  void
+ */
 function rcp_signups_graph() {
 	global $rcp_options, $wpdb;
 
@@ -713,7 +727,7 @@ function rcp_signups_graph() {
 
 	   });
 	</script>
-	<h2><?php _e( 'Signups Report', 'rcp' ); ?></h2>
+	<h1><?php _e( 'Signups Report', 'rcp' ); ?></h1>
 	<div class="metabox-holder" style="padding-top: 0;">
 		<div class="postbox">
 			<div class="inside">
@@ -733,7 +747,7 @@ add_action( 'rcp_reports_tab_signups', 'rcp_signups_graph' );
  *
  * @since 1.8
  * @return void
-*/
+ */
 function rcp_reports_graph_controls() {
 	$date_options = apply_filters( 'rcp_report_date_options', array(
 		'this_week' 	=> __( 'This Week', 'rcp' ),
@@ -752,7 +766,7 @@ function rcp_reports_graph_controls() {
 	$active_tab     = isset( $_GET[ 'tab' ] ) ? $_GET[ 'tab' ] : 'earnings';
 	$selected_level = isset( $_GET['subscription'] ) ? absint( $_GET['subscription'] ) : false;
 	?>
-	<form id="rcp-garphs-filter" method="get">
+	<form id="rcp-graphs-filter" method="get">
 		<div class="tablenav top">
 			<div class="alignleft actions">
 
@@ -816,8 +830,8 @@ function rcp_reports_graph_controls() {
  * selected date-range (if any)
  *
  * @since 1.8
- * @return void
-*/
+ * @return array
+ */
 function rcp_get_report_dates() {
 
 	$dates = array();
@@ -997,7 +1011,7 @@ function rcp_get_report_dates() {
  *
  * @since 1.8
  * @return void
-*/
+ */
 function rcp_parse_report_dates() {
 
 	if( ! isset( $_GET['rcp_action'] ) )

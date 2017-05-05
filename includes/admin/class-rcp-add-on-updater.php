@@ -1,4 +1,12 @@
 <?php
+/**
+ * RCP Add-On Updater
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Add-On Updater
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 //set_site_transient( 'update_plugins', null );
 	
@@ -218,7 +226,7 @@ class RCP_Add_On_Updater {
 	 */
 	private function api_request( $_action, $_data ) {
 
-		global $wp_version, $rcp_options;
+		global $rcp_options;
 
 		$data = $_data;
 

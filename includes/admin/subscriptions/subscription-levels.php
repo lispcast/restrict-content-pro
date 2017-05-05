@@ -1,7 +1,19 @@
 <?php
+/**
+ * Subscription Levels Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Subscription Levels
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
-function rcp_member_levels_page()
-{
+/**
+ * Render subscription levels page
+ *
+ * @return void
+ */
+function rcp_member_levels_page() {
 	global $rcp_options, $rcp_db_name, $wpdb;
 	$page = admin_url( '/admin.php?page=rcp-member-levels' );
 	?>
@@ -9,7 +21,7 @@ function rcp_member_levels_page()
 		<?php if(isset($_GET['edit_subscription'])) :
 			include('edit-subscription.php');
 		else : ?>
-			<h2><?php _e('Subscription Levels', 'rcp'); ?></h2>
+			<h1><?php _e('Subscription Levels', 'rcp'); ?></h1>
 			<table class="wp-list-table widefat fixed posts rcp-subscriptions">
 				<thead>
 					<tr>
@@ -77,7 +89,7 @@ function rcp_member_levels_page()
 								?>
 							</td>
 							<?php do_action('rcp_levels_page_table_column', $level->id); ?>
-							<td class="rcp-sub-order-col"><a href="#" class="dragHandle"></a></td>
+							<td class="rcp-sub-order-col"><a href="#" class="rcp-drag-handle"></a></td>
 						</tr>
 					<?php $i++;
 					endforeach;
@@ -100,7 +112,7 @@ function rcp_member_levels_page()
 			</table>
 			<?php do_action('rcp_levels_below_table'); ?>
 			<?php if( current_user_can( 'rcp_manage_levels' ) ) : ?>
-				<h3><?php _e('Add New Level', 'rcp'); ?></h3>
+				<h2><?php _e('Add New Level', 'rcp'); ?></h2>
 				<form id="rcp-member-levels" action="" method="post">
 					<table class="form-table">
 						<tbody>
@@ -146,7 +158,7 @@ function rcp_member_levels_page()
 									<label for="rcp-duration"><?php _e('Duration', 'rcp'); ?></label>
 								</th>
 								<td>
-									<input type="text" id="rcp-duration" style="width: 40px;" name="duration" value=""/>
+									<input type="text" id="rcp-duration" style="width: 40px;" name="duration" value="0"/>
 									<select name="duration_unit" id="rcp-duration-unit">
 										<option value="day"><?php _e('Day(s)', 'rcp'); ?></option>
 										<option value="month"><?php _e('Month(s)', 'rcp'); ?></option>
@@ -160,14 +172,27 @@ function rcp_member_levels_page()
 							</tr>
 							<tr class="form-field">
 								<th scope="row" valign="top">
+									<label for="trial_duration"><?php _e('Free Trial Duration', 'rcp'); ?></label>
+								</th>
+								<td>
+									<input type="text" id="trial_duration" style="width: 40px;" name="trial_duration" value="0"/>
+									<select name="trial_duration_unit" id="trial_duration_unit">
+										<option value="day"><?php _e('Day(s)', 'rcp'); ?></option>
+										<option value="month"><?php _e('Month(s)', 'rcp'); ?></option>
+										<option value="year"><?php _e('Year(s)', 'rcp'); ?></option>
+									</select>
+									<p class="description">
+										<?php _e('Length of time the free trial should last. Enter 0 for no free trial.', 'rcp'); ?>
+										<span alt="f223" class="rcp-help-tip dashicons dashicons-editor-help" title="<?php _e( '<strong>Example</strong>: setting this to 7 days would give the member a 7-day free trial. The member would be billed at the end of the trial.<p><strong>Note:</strong> If you enable a free trial, the regular subscription duration and price must be greater than 0.</p>', 'rcp' ); ?>"></span>
+									</p>
+								</td>
+							</tr>
+							<tr class="form-field">
+								<th scope="row" valign="top">
 									<label for="rcp-price"><?php _e('Price', 'rcp'); ?></label>
 								</th>
 								<td>
-									<input type="text" id="rcp-price" name="price" value="" style="width: 40px;"/>
-									<select name="rcp-price-select" id="rcp-price-select">
-										<option value="normal"><?php echo isset( $rcp_options['currency'] ) ? $rcp_options['currency'] : 'USD'; ?></option>
-										<option value="free"><?php _e('Free', 'rcp'); ?></option>
-									</select>
+									<input type="text" id="rcp-price" name="price" value="0" pattern="^(\d+\.\d{2})|(\d+)$" style="width: 40px;"/>
 									<p class="description">
 										<?php _e('The price of this membership level. Enter 0 for free.', 'rcp'); ?>
 										<span alt="f223" class="rcp-help-tip dashicons dashicons-editor-help" title="<?php _e( 'This price refers to the amount paid per duration period. For example, if duration period is set to 1 month, this would be the amount charged each month.', 'rcp' ); ?>"></span>
@@ -179,7 +204,7 @@ function rcp_member_levels_page()
 									<label for="rcp-fee"><?php _e('Signup Fee', 'rcp'); ?></label>
 								</th>
 								<td>
-									<input type="text" id="rcp-fee" name="fee" value="" style="width: 40px;"/>
+									<input type="text" id="rcp-fee" name="fee" value="0" style="width: 40px;"/>
 									<p class="description"><?php _e('Optional signup fee to charge subscribers for the first billing cycle. Enter a negative number to give a discount on the first payment.', 'rcp'); ?></p>
 								</td>
 							</tr>

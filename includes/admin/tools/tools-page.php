@@ -1,8 +1,18 @@
 <?php
 /**
+ * Tools Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Tools
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+/**
  * Displays the Tools page
  *
  * @since 2.5
+ * @return void
  */
 function rcp_tools_page() {
 	if( ! current_user_can( 'rcp_view_payments' ) ) {
@@ -30,6 +40,7 @@ function rcp_tools_page() {
  * Listens for system info download requests and delivers the file
  *
  * @since 2.5
+ * @return void
  */
 function rcp_tools_sysinfo_download() {
 

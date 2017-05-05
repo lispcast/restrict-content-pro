@@ -1,18 +1,36 @@
 <?php
+/**
+ * CAPTCHA Functions
+ *
+ * Adds CAPTCHA to the registration form and validates the submission.
+ *
+ * @package     Restrict Content Pro
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/license/gpl-2.1.php GNU Public License
+ */
 
+/**
+ * Add reCAPTCHA to the registration form if it's enabled.
+ *
+ * @return void
+ */
 function rcp_show_captcha() {
 	global $rcp_options;
 	// reCaptcha
-	if( isset( $rcp_options['enable_recaptcha'] ) && ! empty( $rcp_options['recaptcha_public_key'] ) ) :
-?>
-	<div id="rcp_recaptcha"class="g-recaptcha" data-sitekey="<?php echo esc_attr( $rcp_options['recaptcha_public_key'] ); ?>"></div>
-	<input type="hidden" name="g-recaptcha-remoteip" value=<?php echo esc_attr( rcp_get_ip() ); ?> /><br/>
-<?php
-	endif;
+	if( isset( $rcp_options['enable_recaptcha'] ) && ! empty( $rcp_options['recaptcha_public_key'] ) ) : ?>
+		<div id="rcp_recaptcha" data-callback="rcp_validate_recaptcha" class="g-recaptcha" data-sitekey="<?php echo esc_attr( $rcp_options['recaptcha_public_key'] ); ?>"></div>
+		<input type="hidden" name="g-recaptcha-remoteip" value=<?php echo esc_attr( rcp_get_ip() ); ?> /><br/>
+	<?php endif;
 }
 add_action( 'rcp_before_registration_submit_field', 'rcp_show_captcha', 100 );
 
-
+/**
+ * Validate reCAPTCHA during form submission and throw an error if invalid.
+ *
+ * @param array $data Data passed through the registration form.
+ *
+ * @return void
+ */
 function rcp_validate_captcha( $data ) {
 
 	global $rcp_options;

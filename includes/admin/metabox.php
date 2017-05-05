@@ -1,9 +1,18 @@
 <?php
+/**
+ * Meta Box
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Meta Box
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
-/*******************************************
-* Restrict Content Meta Box
-*******************************************/
-
+/**
+ * Get metabox fields
+ *
+ * @return array
+ */
 function rcp_get_metabox_fields() {
 
 	//custom meta boxes
@@ -20,24 +29,33 @@ function rcp_get_metabox_fields() {
 	return apply_filters( 'rcp_metabox_fields', $rcp_meta_box );
 }
 
-// Add meta box
-
-
+/**
+ * Add meta box to supported post types
+ *
+ * @uses rcp_get_metabox_fields()
+ *
+ * @return void
+ */
 function rcp_add_meta_boxes() {
 	$rcp_meta_box = rcp_get_metabox_fields();
-	$post_types   = get_post_types( array( 'public' => true, 'show_ui' => true ), 'objects' );
+	$post_types   = get_post_types( array( 'public' => true, 'show_ui' => true ) );
+	$post_types   = (array) apply_filters( 'rcp_metabox_post_types', $post_types );
 	$exclude      = apply_filters( 'rcp_metabox_excluded_post_types', array( 'forum', 'topic', 'reply', 'product', 'attachment' ) );
 
-	foreach ( $post_types as $page ) {
-		if( ! in_array( $page->name, $exclude ) ) {
-			add_meta_box( $rcp_meta_box['id'], $rcp_meta_box['title'], 'rcp_render_meta_box', $page->name, $rcp_meta_box['context'], $rcp_meta_box['priority'] );
+	foreach ( $post_types as $post_type ) {
+		if( ! in_array( $post_type, $exclude ) ) {
+			add_meta_box( $rcp_meta_box['id'], $rcp_meta_box['title'], 'rcp_render_meta_box', $post_type, $rcp_meta_box['context'], $rcp_meta_box['priority'] );
 		}
 	}
 }
-add_action( 'admin_menu', 'rcp_add_meta_boxes' );
+add_action( 'add_meta_boxes', 'rcp_add_meta_boxes' );
 
 
-// Callback function to show fields in meta box
+/**
+ * Callback function to show fields in meta box
+ *
+ * @return void
+ */
 function rcp_render_meta_box() {
 	global $post;
 
@@ -54,7 +72,13 @@ function rcp_render_meta_box() {
 
 }
 
-// Save data from meta box
+/**
+ * Save data from meta box
+ *
+ * @param int $post_id ID of the post being saved.
+ *
+ * @return void
+ */
 function rcp_save_meta_data( $post_id ) {
 
 	// verify nonce
@@ -180,17 +204,36 @@ function rcp_save_meta_data( $post_id ) {
 
 	}
 
+	global $rcp_options;
 
-	$show_excerpt = isset( $_POST['rcp_show_excerpt'] );
-	$hide_in_feed = isset( $_POST['rcp_hide_from_feed'] );
-	$user_role    = sanitize_text_field( $_POST[ 'rcp_user_level' ] );
+	$content_excerpts  = isset( $rcp_options['content_excerpts'] ) ? $rcp_options['content_excerpts'] : 'individual';
+	$show_excerpt      = isset( $_POST['rcp_show_excerpt'] );
+	$hide_in_feed      = isset( $_POST['rcp_hide_from_feed'] );
+	$user_role         = sanitize_text_field( $_POST[ 'rcp_user_level' ] );
 
-	update_post_meta( $post_id, 'rcp_show_excerpt', $show_excerpt );
-	update_post_meta( $post_id, 'rcp_hide_from_feed', $hide_in_feed );
+	if ( 'individual' === $content_excerpts && $show_excerpt ) {
+		update_post_meta( $post_id, 'rcp_show_excerpt', $show_excerpt );
+	} else {
+		delete_post_meta( $post_id, 'rcp_show_excerpt' );
+	}
+
+	if ( $hide_in_feed ) {
+		update_post_meta( $post_id, 'rcp_hide_from_feed', $hide_in_feed );
+	} else {
+		delete_post_meta( $post_id, 'rcp_hide_from_feed' );
+	}
+
 	if ( 'unrestricted' !== $_POST['rcp_restrict_by'] ) {
 		update_post_meta( $post_id, 'rcp_user_level', $user_role );
 	}
-	update_post_meta( $post_id, '_is_paid', $is_paid );
+
+	if ( $is_paid ) {
+		update_post_meta( $post_id, '_is_paid', $is_paid );
+	} else {
+		delete_post_meta( $post_id, '_is_paid' );
+	}
+
+	do_action( 'rcp_save_post_meta', $post_id );
 
 }
 add_action( 'save_post', 'rcp_save_meta_data' );

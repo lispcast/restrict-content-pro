@@ -2,10 +2,17 @@
 
 class RCP_Member_Tests extends WP_UnitTestCase {
 
+	/**
+	 * @var RCP_Member
+	 */
 	protected $member;
 	protected $level_id;
 	protected $level_id_2;
 	protected $level_id_3;
+	protected $post_id;
+	protected $term;
+	protected $term_2;
+	protected $free_level;
 
 	public function setUp() {
 		parent::setUp();
@@ -45,6 +52,27 @@ class RCP_Member_Tests extends WP_UnitTestCase {
 			'status'        => 'active',
 			'level'         => 3
 		) );
+
+		$this->free_level = $levels->insert( array(
+			'name'          => 'Free',
+			'duration'      => 0,
+			'duration_unit' => 'day',
+			'status'        => 'active',
+			'price'         => 0
+		) );
+
+		$this->post_id = wp_insert_post( array(
+			'post_title'  => 'Test',
+			'post_status' => 'publish',
+		) );
+
+		// Set up a restricted taxonomy term for use in some tests.
+		$this->term = wp_insert_term( 'test', 'category' );
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id ) ) );
+
+		$this->term_2 = wp_insert_term( 'test2', 'category' );
+		update_term_meta( $this->term_2['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id_2 ) ) );
+
 	}
 
 	function test_get_default_status() {
@@ -253,56 +281,402 @@ class RCP_Member_Tests extends WP_UnitTestCase {
 
 	}
 
+	function test_can_access_unrestricted_post() {
+
+		delete_user_meta( $this->member->ID, 'rcp_subscription_level' );
+		delete_user_meta( $this->member->ID, 'rcp_status' );
+		delete_user_meta( $this->member->ID, 'rcp_expiration' );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+	}
+
 	function test_can_access() {
 
 		$this->member->set_status( 'active' );
 		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
 
-		$post_id = wp_insert_post( array(
-			'post_title'  => 'Test',
-			'post_status' => 'publish',
-		) );
 
-		update_post_meta( $post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
 
-		$this->assertTrue( $this->member->can_access( $post_id ) );
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
 
-		update_post_meta( $post_id, 'rcp_access_level', 4 );
+		update_post_meta( $this->post_id, 'rcp_access_level', 4 );
 
-		$this->assertFalse( $this->member->can_access( $post_id ) );
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
 
-		update_post_meta( $post_id, 'rcp_access_level', 1 );
+		update_post_meta( $this->post_id, 'rcp_access_level', 1 );
 
-		$this->assertTrue( $this->member->can_access( $post_id ) );
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
 
 		$this->member->set_status( 'cancelled' );
 
-		$this->assertTrue( $this->member->can_access( $post_id ) );
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
 
 		$this->member->set_status( 'expired' );
 
-		$this->assertFalse( $this->member->can_access( $post_id ) );
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
 
 		$this->member->renew();
 
-		$this->assertTrue( $this->member->can_access( $post_id ) );
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
 
 		$this->member->set_status( 'free' );
 
-		$this->assertFalse( $this->member->can_access( $post_id ) );
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
 
 		$this->member->set_status( 'active' );
 
-		update_post_meta( $post_id, 'rcp_subscription_level', array( $this->level_id ) );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id ) );
 
-		$this->assertTrue( $this->member->can_access( $post_id ) );
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
 
-		update_post_meta( $post_id, 'rcp_subscription_level', array( $this->level_id_2 ) );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id_2 ) );
 
-		$this->assertFalse( $this->member->can_access( $post_id ) );
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
 
 		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_2 );
 
-		$this->assertTrue( $this->member->can_access( $post_id ) );
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_active_content_as_pending_member() {
+
+		$this->member->set_status( 'pending' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', 'any-paid' );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_content_restricted_to_any_level_as_pending_member() {
+
+		$this->member->set_status( 'pending' );
+		delete_post_meta( $this->post_id, '_is_paid' );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', 'any' );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_active_content_as_expired_member() {
+
+		$this->member->set_status( 'expired' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', 'any-paid' );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_active_content_as_cancelled_member() {
+
+		$this->member->set_status( 'cancelled' );
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '+1 week' ) ) );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', 'any-paid' );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_free_member() {
+
+		$this->member->set_status( 'free' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', 'any-paid' );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_active_content_as_active_member() {
+
+		$this->member->set_status( 'active' );
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '+1 week' ) ) );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', 'any-paid' );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_active_content_as_active_member_with_subscription_level() {
+
+		$this->member->set_status( 'active' );
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '+1 week' ) ) );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_active_content_as_cancelled_member_with_subscription_level() {
+
+		$this->member->set_status( 'cancelled' );
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '+1 week' ) ) );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_expired_member_with_subscription_level() {
+
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '-1 week' ) ) );
+		$this->member->set_status( 'expired' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_pending_member_with_subscription_level() {
+
+		$this->member->set_status( 'pending' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_free_member_with_subscription_level() {
+
+		$this->member->set_status( 'free' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_active_member_without_subscription_level() {
+
+		$this->member->set_status( 'active' );
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '+1 week' ) ) );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_3 );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_cancelled_member_without_subscription_level() {
+
+		$this->member->set_status( 'cancelled' );
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '+1 week' ) ) );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_3 );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_expired_member_without_subscription_level() {
+
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '-1 week' ) ) );
+		$this->member->set_status( 'expired' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_3 );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_pending_member_without_subscription_level() {
+
+		$this->member->set_status( 'pending' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_3 );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_active_content_as_free_member_without_subscription_level() {
+
+		$this->member->set_status( 'free' );
+		update_post_meta( $this->post_id, '_is_paid', true );
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_3 );
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_post_restricted_at_post_level_and_taxonomy_term_but_with_different_settings() {
+
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id, $this->level_id_2 ) );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id_3 ) ) );
+
+		$this->member->set_status( 'active' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_post_restricted_at_post_level_and_taxonomy_term_but_with_different_settings_matches_term() {
+
+		delete_post_meta( $this->post_id, 'rcp_subscription_level' );
+
+		update_post_meta( $this->post_id, 'rcp_subscription_level', array( $this->level_id_2 ) );
+
+		$this->member->set_status( 'active' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id ) ) );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_post_restricted_by_taxonomy_term() {
+
+		delete_post_meta( $this->post_id, 'rcp_subscription_level' );
+		delete_post_meta( $this->post_id, 'rcp_access_level' );
+		delete_post_meta( $this->post_id, '_is_paid' );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_status( 'active' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_post_restricted_by_taxonomy_term_with_incorrect_subscription_level() {
+
+		delete_post_meta( $this->post_id, 'rcp_subscription_level' );
+		delete_post_meta( $this->post_id, 'rcp_access_level' );
+		delete_post_meta( $this->post_id, '_is_paid' );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id ) ) );
+
+		$this->member->set_status( 'active' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_3 );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_can_access_post_restricted_by_taxonomy_term_with_member_status_cancelled() {
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_status( 'cancelled' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_post_restricted_by_taxonomy_term_with_member_status_cancelled_but_expired() {
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_expiration_date( date( 'Y-n-d H:i:s', strtotime( '-1 week' ) ) );
+		$this->member->set_status( 'cancelled' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_post_restricted_by_taxonomy_term_with_member_status_expired() {
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_status( 'expired' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_can_access_post_restricted_by_taxonomy_term_with_paid_only_flag() {
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'paid_only' => true ) );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_status( 'active' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_post_restricted_by_taxonomy_term_with_paid_only_flag_with_free_subscription_level() {
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'paid_only' => true ) );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_status( 'free' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->free_level );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+	}
+
+	function test_cannot_access_post_restricted_to_paid_level_on_taxonomy_term_without_paid_only_flag_with_member_status_free() {
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id ) ) );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		$this->member->set_status( 'free' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->free_level );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_cannot_access_post_restricted_by_taxonomy_term_if_user_has_no_membership() {
+
+		update_term_meta( $this->term['term_id'], 'rcp_restricted_meta', array( 'subscriptions' => array( $this->level_id ) ) );
+
+		wp_set_post_terms( $this->post_id, $this->term, 'category' );
+
+		delete_user_meta( $this->member->ID, 'rcp_subscription_level' );
+		delete_user_meta( $this->member->ID, 'rcp_status' );
+
+		$this->assertFalse( $this->member->can_access( $this->post_id ) );
+
+	}
+
+	function test_can_access_post_restricted_by_multiple_taxonomy_terms_where_only_one_matches() {
+
+		wp_set_post_terms( $this->post_id, array( $this->term, $this->term_2 ), 'category' );
+
+		$this->member->set_status( 'active' );
+
+		update_user_meta( $this->member->ID, 'rcp_subscription_level', $this->level_id_2 );
+
+		$this->assertTrue( $this->member->can_access( $this->post_id ) );
 	}
 }

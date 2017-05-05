@@ -1,9 +1,19 @@
 <?php
-/*
-* Check whether a discount code is valid. Used during registration to validate a discount code on the fly
-* @param - string $code - the discount code to validate
-* return none
-*/
+/**
+ * Ajax Actions
+ *
+ * Process the front-end ajax actions.
+ *
+ * @package     Restrict Content Pro
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/license/gpl-2.1.php GNU Public License
+ */
+
+/**
+ * Check whether a discount code is valid. Used during registration to validate a discount code on the fly.
+ *
+ * @return void
+ */
 function rcp_validate_discount_with_ajax() {
 	if( isset( $_POST['code'] ) ) {
 
@@ -40,8 +50,8 @@ add_action( 'wp_ajax_nopriv_validate_discount', 'rcp_validate_discount_with_ajax
 /**
  * Calls the load_fields() method for gateways when a gateway selection is made
  *
- * @access      public
- * @since       2.1
+ * @since  2.1
+ * @return void
  */
 function rcp_load_gateway_fields() {
 
@@ -55,7 +65,8 @@ add_action( 'wp_ajax_nopriv_rcp_load_gateway_fields', 'rcp_load_gateway_fields' 
 /**
  * Setup the registration details
  *
- * @since 2.5
+ * @since  2.5
+ * @return void
  */
 function rcp_calc_total_ajax() {
 	$return = array(

@@ -1,5 +1,14 @@
 <?php
 /**
+ * System Info
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/System Info
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+/**
  * Displays the system info report
  *
  * @since 2.5
@@ -24,7 +33,7 @@ function rcp_tools_system_info_report() {
 	// WordPress configuration
 	$return .= "\n" . '-- WordPress Configuration' . "\n\n";
 	$return .= 'Version:                  ' . get_bloginfo( 'version' ) . "\n";
-	$return .= 'Language:                 ' . ( defined( 'WPLANG' ) && WPLANG ? WPLANG : 'en_US' ) . "\n";
+	$return .= 'Language:                 ' . get_locale() . "\n";
 	$return .= 'Permalink Structure:      ' . ( get_option( 'permalink_structure' ) ? get_option( 'permalink_structure' ) : 'Default' ) . "\n";
 	$return .= 'Active Theme:             ' . $theme . "\n";
 	$return .= 'Show On Front:            ' . get_option( 'show_on_front' ) . "\n";
@@ -94,14 +103,26 @@ function rcp_tools_system_info_report() {
 	$return .= 'reCaptcha Secret Key:             ' . ( ! empty( $rcp_options['recaptcha_private_key'] ) ? "Set\n" : "Unset\n" );
 
 	// RCP Templates
-	$dir = get_stylesheet_directory() . '/rcp/';
+	$files       = array();
+	$directories = array( get_stylesheet_directory() . '/rcp/' );
 
-	if( is_dir( $dir ) && ( count( glob( "$dir/*" ) ) !== 0 ) ) {
-		$return .= "\n" . '-- RCP Template Overrides' . "\n\n";
+	if ( is_child_theme() ) {
+		$directories[] = get_template_directory() . '/rcp/';
+	}
 
-		foreach( glob( $dir . '/*' ) as $file ) {
-			$return .= 'Filename:                 ' . basename( $file ) . "\n";
+	foreach ( $directories as $dir ) {
+		if ( is_dir( $dir ) && ( count( glob( "$dir/*" ) ) !== 0 ) ) {
+			foreach ( glob( $dir . '/*' ) as $file ) {
+				if ( ! array_key_exists( basename( $file ), $files ) ) {
+					$files[ basename( $file ) ] = 'Filename:                 ' . basename( $file );
+				}
+			}
 		}
+	}
+
+	if ( ! empty( $files ) ) {
+		$return .= "\n" . '-- RCP Template Overrides' . "\n\n";
+		$return .= implode( "\n", $files ) . "\n";
 	}
 
 	// Get plugins that have an update

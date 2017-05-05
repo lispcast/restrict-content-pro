@@ -1,11 +1,20 @@
 <?php
+/**
+ * PayPal Functions
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Gateways/PayPal/Functions
+ * @copyright   Copyright (c) 2017, Pippin Williamson
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 /**
  * Determine if a member is a PayPal subscriber
  *
- * @since       v2.0
+ * @param int $user_id The ID of the user to check
+ *
+ * @since       2.0
  * @access      public
- * @param       $user_id INT the ID of the user to check
  * @return      bool
 */
 function rcp_is_paypal_subscriber( $user_id = 0 ) {
@@ -23,11 +32,6 @@ function rcp_is_paypal_subscriber( $user_id = 0 ) {
 
 		$ret = true;
 
-	} else {
-
-		// The old way of identifying PayPal subscribers
-		$ret = (bool) get_user_meta( $user_id, 'rcp_paypal_subscriber', true );
-
 	}
 
 	return (bool) apply_filters( 'rcp_is_paypal_subscriber', $ret, $user_id );
@@ -38,6 +42,7 @@ function rcp_is_paypal_subscriber( $user_id = 0 ) {
  *
  * @access      public
  * @since       2.1
+ * @return      bool
  */
 function rcp_has_paypal_api_access() {
 	global $rcp_options;
@@ -67,6 +72,7 @@ function rcp_has_paypal_api_access() {
  *
  * @access      public
  * @since       2.1
+ * @return      array Array of credentials.
  */
 function rcp_get_paypal_api_credentials() {
 	global $rcp_options;
@@ -90,8 +96,12 @@ function rcp_get_paypal_api_credentials() {
 /**
  * Process an update card form request
  *
+ * @param int        $member_id  ID of the member.
+ * @param RCP_Member $member_obj Member object.
+ *
  * @access      private
  * @since       2.6
+ * @return      void
  */
 function rcp_paypal_update_billing_card( $member_id = 0, $member_obj ) {
 

@@ -1,11 +1,20 @@
 <?php
+/**
+ * Stripe Functions
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Gateways/Stripe/Functions
+ * @copyright   Copyright (c) 2017, Pippin Williamson
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 /**
  * Determine if a member is a Stripe subscriber
  *
- * @since       v2.1
+ * @param int $user_id The ID of the user to check
+ *
+ * @since       2.1
  * @access      public
- * @param       $user_id INT the ID of the user to check
  * @return      bool
 */
 function rcp_is_stripe_subscriber( $user_id = 0 ) {
@@ -35,6 +44,7 @@ function rcp_is_stripe_subscriber( $user_id = 0 ) {
  *
  * @access      private
  * @since       2.1
+ * @return      void
  */
 function rcp_stripe_update_card_form_js() {
 	global $rcp_options;
@@ -53,7 +63,7 @@ function rcp_stripe_update_card_form_js() {
 		return;
 	}
 
-	wp_enqueue_script( 'stripe', 'https://js.stripe.com/v2/', array( 'jquery' ) );
+	wp_enqueue_script( 'stripe-js', 'https://js.stripe.com/v2/', array( 'jquery' ) );
 ?>
 	<script type="text/javascript">
 
@@ -114,8 +124,12 @@ add_action( 'rcp_before_update_billing_card_form', 'rcp_stripe_update_card_form_
 /**
  * Process an update card form request
  *
+ * @param int        $member_id  ID of the member.
+ * @param RCP_Member $member_obj Member object.
+ *
  * @access      private
  * @since       2.1
+ * @return      void
  */
 function rcp_stripe_update_billing_card( $member_id = 0, $member_obj ) {
 
@@ -258,10 +272,13 @@ add_action( 'rcp_update_billing_card', 'rcp_stripe_update_billing_card', 10, 2 )
 /**
  * Create discount code in Stripe when one is created in RCP
  *
+ * @param array $args
+ *
  * @access      private
  * @since       2.1
+ * @return      void
  */
-function rcp_stripe_create_discount() {
+function rcp_stripe_create_discount( $args ) {
 
 	if( ! is_admin() ) {
 		return;
@@ -282,29 +299,33 @@ function rcp_stripe_create_discount() {
 	}
 
 	if ( rcp_is_sandbox() ) {
-		$secret_key = trim( $rcp_options['stripe_test_secret'] );
+		$secret_key = isset( $rcp_options['stripe_test_secret'] ) ? trim( $rcp_options['stripe_test_secret'] ) : '';
 	} else {
-		$secret_key = trim( $rcp_options['stripe_live_secret'] );
+		$secret_key = isset( $rcp_options['stripe_live_secret'] ) ? trim( $rcp_options['stripe_live_secret'] ) : '';
+	}
+
+	if( empty( $secret_key ) ) {
+		return;
 	}
 
 	\Stripe\Stripe::setApiKey( $secret_key );
 
 	try {
 
-		if ( $_POST['unit'] == '%' ) {
+		if ( $args['unit'] == '%' ) {
 			\Stripe\Coupon::create( array(
-					"percent_off" => sanitize_text_field( $_POST['amount'] ),
+					"percent_off" => sanitize_text_field( $args['amount'] ),
 					"duration"    => "forever",
-					"id"          => sanitize_text_field( $_POST['code'] ),
-					"currency"   => strtolower( $rcp_options['currency'] )
+					"id"          => sanitize_text_field( $args['code'] ),
+					"currency"   => strtolower( rcp_get_currency() )
 				)
 			);
 		} else {
 			\Stripe\Coupon::create( array(
-					"amount_off" => sanitize_text_field( $_POST['amount'] ) * rcp_stripe_get_currency_multiplier(),
+					"amount_off" => sanitize_text_field( $args['amount'] ) * rcp_stripe_get_currency_multiplier(),
 					"duration"   => "forever",
-					"id"         => sanitize_text_field( $_POST['code'] ),
-					"currency"   => strtolower( $rcp_options['currency'] )
+					"id"         => sanitize_text_field( $args['code'] ),
+					"currency"   => strtolower( rcp_get_currency() )
 				)
 			);
 		}
@@ -406,9 +427,8 @@ add_action( 'rcp_pre_add_discount', 'rcp_stripe_create_discount' );
 /**
  * Update a discount in Stripe when a local code is updated
  *
- * @access      private
- * @param       $discount_id int the id of the discount being updated
- * @param       $args array the array of discount args
+ * @param int $discount_id The id of the discount being updated
+ * @param array $args The array of discount args
  *              array(
  *					'name',
  *					'description',
@@ -420,7 +440,10 @@ add_action( 'rcp_pre_add_discount', 'rcp_stripe_create_discount' );
  *					'max_uses',
  *					'subscription_id'
  *				)
+ *
+ * @access      private
  * @since       2.1
+ * @return      void
  */
 function rcp_stripe_update_discount( $discount_id, $args ) {
 
@@ -451,9 +474,13 @@ function rcp_stripe_update_discount( $discount_id, $args ) {
 	}
 
 	if ( rcp_is_sandbox() ) {
-		$secret_key = trim( $rcp_options['stripe_test_secret'] );
+		$secret_key = isset( $rcp_options['stripe_test_secret'] ) ? trim( $rcp_options['stripe_test_secret'] ) : '';
 	} else {
-		$secret_key = trim( $rcp_options['stripe_live_secret'] );
+		$secret_key = isset( $rcp_options['stripe_live_secret'] ) ? trim( $rcp_options['stripe_live_secret'] ) : '';
+	}
+
+	if( empty( $secret_key ) ) {
+		return;
 	}
 
 	\Stripe\Stripe::setApiKey( $secret_key );
@@ -470,7 +497,7 @@ function rcp_stripe_update_discount( $discount_id, $args ) {
 						"percent_off" => sanitize_text_field( $args['amount'] ),
 						"duration"    => "forever",
 						"id"          => sanitize_text_field( $discount_name ),
-						"currency"    => strtolower( $rcp_options['currency'] )
+						"currency"    => strtolower( rcp_get_currency() )
 					)
 				);
 			} else {
@@ -478,7 +505,7 @@ function rcp_stripe_update_discount( $discount_id, $args ) {
 						"amount_off" => sanitize_text_field( $args['amount'] ) * rcp_stripe_get_currency_multiplier(),
 						"duration"   => "forever",
 						"id"         => sanitize_text_field( $discount_name ),
-						"currency"   => strtolower( $rcp_options['currency'] )
+						"currency"   => strtolower( rcp_get_currency() )
 					)
 				);
 			}
@@ -505,7 +532,7 @@ function rcp_stripe_update_discount( $discount_id, $args ) {
 						"percent_off" => sanitize_text_field( $args['amount'] ),
 						"duration"    => "forever",
 						"id"          => sanitize_text_field( $discount_name ),
-						"currency"    => strtolower( $rcp_options['currency'] )
+						"currency"    => strtolower( rcp_get_currency() )
 					)
 				);
 			} else {
@@ -513,7 +540,7 @@ function rcp_stripe_update_discount( $discount_id, $args ) {
 						"amount_off" => sanitize_text_field( $args['amount'] ) * rcp_stripe_get_currency_multiplier(),
 						"duration"   => "forever",
 						"id"         => sanitize_text_field( $discount_name ),
-						"currency"   => strtolower( $rcp_options['currency'] )
+						"currency"   => strtolower( rcp_get_currency() )
 					)
 				);
 			}
@@ -599,8 +626,11 @@ add_action( 'rcp_edit_discount', 'rcp_stripe_update_discount', 10, 2 );
 /**
  * Check if a coupone exists in Stripe
  *
+ * @param string $code Discount code.
+ *
  * @access      private
  * @since       2.1
+ * @return      bool|void
  */
 function rcp_stripe_does_coupon_exists( $code ) {
 	global $rcp_options;
@@ -610,9 +640,13 @@ function rcp_stripe_does_coupon_exists( $code ) {
 	}
 
 	if ( rcp_is_sandbox() ) {
-		$secret_key = trim( $rcp_options['stripe_test_secret'] );
+		$secret_key = isset( $rcp_options['stripe_test_secret'] ) ? trim( $rcp_options['stripe_test_secret'] ) : '';
 	} else {
-		$secret_key = trim( $rcp_options['stripe_live_secret'] );
+		$secret_key = isset( $rcp_options['stripe_live_secret'] ) ? trim( $rcp_options['stripe_live_secret'] ) : '';
+	}
+
+	if( empty( $secret_key ) ) {
+		return;
 	}
 
 	\Stripe\Stripe::setApiKey( $secret_key );
@@ -644,9 +678,9 @@ function rcp_stripe_get_currency_multiplier( $currency = '' ) {
 /**
  * Query Stripe API to get customer's card details
  *
- * @param $card       array
- * @param $member_id int
- * @param $member    object
+ * @param array      $cards     Array of card information.
+ * @param int        $member_id ID of the member.
+ * @param RCP_Member $member    RCP member object.
  *
  * @since 2.5
  * @return array
@@ -664,9 +698,13 @@ function rcp_stripe_get_card_details( $cards, $member_id, $member ) {
 	}
 
 	if ( rcp_is_sandbox() ) {
-		$secret_key = trim( $rcp_options['stripe_test_secret'] );
+		$secret_key = isset( $rcp_options['stripe_test_secret'] ) ? trim( $rcp_options['stripe_test_secret'] ) : '';
 	} else {
-		$secret_key = trim( $rcp_options['stripe_live_secret'] );
+		$secret_key = isset( $rcp_options['stripe_live_secret'] ) ? trim( $rcp_options['stripe_live_secret'] ) : '';
+	}
+
+	if( empty( $secret_key ) ) {
+		return $cards;
 	}
 
 	\Stripe\Stripe::setApiKey( $secret_key );
@@ -691,3 +729,46 @@ function rcp_stripe_get_card_details( $cards, $member_id, $member ) {
 
 }
 add_filter( 'rcp_get_card_details', 'rcp_stripe_get_card_details', 10, 3 );
+
+/**
+ * Sends a new user notification email when using the [register_form_stripe] shortcode.
+ *
+ * @param int                        $user_id ID of the user.
+ * @param RCP_Payment_Gateway_Stripe $gateway Stripe gateway object.
+ *
+ * @since 2.7
+ * @return void
+ */
+function rcp_stripe_checkout_new_user_notification( $user_id, $gateway ) {
+
+	if ( 'stripe_checkout' === $gateway->subscription_data['post_data']['rcp_gateway'] && ! empty( $gateway->subscription_data['post_data']['rcp_stripe_checkout'] ) && $gateway->subscription_data['new_user'] ) {
+
+		/**
+		 * After the password reset key is generated and before the email body is created,
+		 * add our filter to replace the URLs in the email body.
+		 */
+		add_action( 'retrieve_password_key', function() {
+
+			add_filter( 'wp_mail', function( $args ) {
+
+				global $rcp_options;
+
+				if ( ! empty( $rcp_options['hijack_login_url'] ) && ! empty( $rcp_options['login_redirect'] ) ) {
+
+					// Rewrite the password reset link
+					$args['message'] = str_replace( trailingslashit( network_site_url() ) . 'wp-login.php?action=rp', get_permalink( $rcp_options['login_redirect'] ) . '?rcp_action=lostpassword_reset', $args['message'] );
+
+				}
+
+				return $args;
+
+			});
+
+		});
+
+		wp_new_user_notification( $user_id, null, 'user' );
+
+	}
+
+}
+add_action( 'rcp_stripe_signup', 'rcp_stripe_checkout_new_user_notification', 10, 2 );

@@ -1,10 +1,23 @@
 <?php
+/**
+ * Meta Box View
+ *
+ * HTML display of the meta box.
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Meta Box View
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
+global $rcp_options;
 $is_paid           = get_post_meta( get_the_ID(), '_is_paid', true );
 $sub_levels        = get_post_meta( get_the_ID(), 'rcp_subscription_level', true );
 $set_level         = is_array( $sub_levels ) ? '' : $sub_levels;
 $access_level      = get_post_meta( get_the_ID(), 'rcp_access_level', true );
 $access_level      = is_numeric( $access_level ) ? absint( $access_level ) : '';
-$show_excerpt      = get_post_meta( get_the_ID(), 'rcp_show_excerpt', true );
+$content_excerpts  = isset( $rcp_options['content_excerpts'] ) ? $rcp_options['content_excerpts'] : 'individual';
+$show_excerpt      = 'always' === $content_excerpts || ( 'individual' === $content_excerpts && get_post_meta( get_the_ID(), 'rcp_show_excerpt', true ) );
 $hide_in_feed      = get_post_meta( get_the_ID(), 'rcp_hide_from_feed', true );
 $user_role         = get_post_meta( get_the_ID(), 'rcp_user_level', true );
 $access_display    = is_numeric( $access_level ) ? '' : ' style="display:none;"';
@@ -70,26 +83,40 @@ $role_set_display  = '' != $user_role ? '' : ' style="display:none;"';
 		</select>
 	</p>
 </div>
-<div id="rcp-metabox-field-options" class="rcp-metabox-field">
+<?php do_action( 'rcp_metabox_additional_options_before' ); ?>
+<?php if( apply_filters( 'rcp_metabox_show_additional_options', true ) ) : ?>
+	<div id="rcp-metabox-field-options" class="rcp-metabox-field">
 
-	<p><strong><?php _e( 'Additional options', 'rcp' ); ?></strong></p>
-	<p>
-		<label for="rcp-show-excerpt">
-			<input type="checkbox" name="rcp_show_excerpt" id="rcp-show-excerpt" value="1"<?php checked( true, $show_excerpt ); ?>/>
-			<?php _e( 'Show excerpt to members without access to this content.', 'rcp' ); ?>
-		</label>
-	</p>
-	<p>
-		<label for="rcp-hide-in-feed">
-			<input type="checkbox" name="rcp_hide_from_feed" id="rcp-hide-in-feed" value="1"<?php checked( true, $hide_in_feed ); ?>/>
-			<?php _e( 'Hide this content and excerpt from RSS feeds.', 'rcp' ); ?>
-		</label>
-	</p>
-	<p>
-		<?php printf(
-			__( 'Optionally use [restrict paid="true"] ... [/restrict] shortcode to restrict partial content. %sView documentation for additional options%s.', 'rcp' ),
-			'<a href="' . esc_url( 'http://docs.pippinsplugins.com/article/36-restricting-post-and-page-content' ) . '" target="_blank">',
-			'</a>'
-		); ?>
-	</p>
-</div>
+		<p><strong><?php _e( 'Additional options', 'rcp' ); ?></strong></p>
+		<p>
+			<?php
+			$disabled = ( 'always' === $content_excerpts || 'never' === $content_excerpts ) ? ' disabled="disabled"' : '';
+			$message  = __( 'You can automatically enable or disable excerpts for all posts by adjusting your Content Excerpts setting in Restrict > Settings > Misc.', 'rcp' );
+
+			if ( 'always' === $content_excerpts ) {
+				$message = __( 'This option is disabled because excerpts are enabled for all posts. This can be changed in Restrict > Settings > Misc.', 'rcp' );
+			} elseif ( 'never' === $content_excerpts ) {
+				$message = __( 'This option is disabled because excerpts are disabled for all posts. This can be changed in Restrict > Settings > Misc.', 'rcp' );
+			}
+			?>
+			<label for="rcp-show-excerpt">
+				<input type="checkbox" name="rcp_show_excerpt" id="rcp-show-excerpt" value="1"<?php echo $disabled; checked( true, $show_excerpt ); ?>/>
+				<?php _e( 'Show excerpt to members without access to this content.', 'rcp' ); ?>
+			</label>
+			<span alt="f223" class="rcp-help-tip dashicons dashicons-editor-help" title="<?php echo esc_attr( $message ); ?>"></span>
+		</p>
+		<p>
+			<label for="rcp-hide-in-feed">
+				<input type="checkbox" name="rcp_hide_from_feed" id="rcp-hide-in-feed" value="1"<?php checked( true, $hide_in_feed ); ?>/>
+				<?php _e( 'Hide this content and excerpt from RSS feeds.', 'rcp' ); ?>
+			</label>
+		</p>
+		<p>
+			<?php printf(
+				__( 'Optionally use [restrict paid="true"] ... [/restrict] shortcode to restrict partial content. %sView documentation for additional options%s.', 'rcp' ),
+				'<a href="' . esc_url( 'http://docs.restrictcontentpro.com/article/1593-restricting-post-and-page-content' ) . '" target="_blank">',
+				'</a>'
+			); ?>
+		</p>
+	</div>
+<?php endif; ?>

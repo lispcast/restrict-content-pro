@@ -1,5 +1,18 @@
 <?php
+/**
+ * Screen Options
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Screen Options
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
+/**
+ * Setup screen options
+ *
+ * @return void
+ */
 function rcp_screen_options() {
 
 	global $rcp_members_page;
@@ -36,7 +49,16 @@ function rcp_screen_options() {
 		
 	endswitch; 
 }
- 
+
+/**
+ * Filters option for number of rows when listing members/payments
+ *
+ * @param bool|int $status Screen option value. Default false to skip.
+ * @param string   $option The option name.
+ * @param int      $value  The number of rows to use.
+ *
+ * @return int|bool
+ */
 function rcp_set_screen_option($status, $option, $value) {
 	if ( 'rcp_members_per_page' == $option ) {
 		return $value;

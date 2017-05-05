@@ -1,4 +1,13 @@
 <?php
+/**
+ * Edit Member Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Edit Member
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
+
 if( isset( $_GET['edit_member'] ) ) {
 	$member_id = absint( $_GET['edit_member'] );
 } elseif( isset( $_GET['view_member'] ) ) {
@@ -6,12 +15,17 @@ if( isset( $_GET['edit_member'] ) ) {
 }
 $member = new RCP_Member( $member_id );
 ?>
-<h2>
-	<?php _e( 'Edit Member:', 'rcp' ); echo ' ' . $member->display_name; ?> -
-	<a href="<?php echo admin_url( '/admin.php?page=rcp-members' ); ?>" class="button-secondary">
-		<?php _e( 'Cancel', 'rcp' ); ?>
-	</a>
-</h2>
+<h1>
+	<?php _e( 'Edit Member:', 'rcp' ); echo ' ' . $member->display_name; ?>
+</h1>
+
+<?php if( ! $member->exists() ) : ?>
+	<div class="error settings-error">
+		<p><?php _e( 'Error: Invalid member ID.', 'rcp' ); ?></p>
+	</div>
+	<?php return; ?>
+<?php endif; ?>
+
 <?php if( $switch_to_url = rcp_get_switch_to_url( $member->ID ) ) { ?>
 	<a href="<?php echo esc_url( $switch_to_url ); ?>" class="rcp_switch"><?php _e('Switch to User', 'rcp'); ?></a>
 <?php } ?>
@@ -19,6 +33,24 @@ $member = new RCP_Member( $member_id );
 	<table class="form-table">
 		<tbody>
 			<?php do_action( 'rcp_edit_member_before', $member->ID ); ?>
+			<tr valign="top">
+				<th scope="row" valign="top">
+					<label for="rcp-userlogin"><?php _e( 'User Login', 'rcp' ); ?></label>
+				</th>
+				<td>
+					<input id="rcp-userlogin" type="text" style="width: 200px;" value="<?php echo esc_attr( $member->user_login ); ?>" disabled="disabled"/>
+					<p class="description"><?php _e( 'The member\'s login name. This cannot be changed.', 'rcp' ); ?></p>
+				</td>
+			</tr>
+			<tr valign="top">
+				<th scope="row" valign="top">
+					<label for="rcp-email"><?php _e( 'User Email', 'rcp' ); ?></label>
+				</th>
+				<td>
+					<input id="rcp-email" name="email" type="text" style="width: 200px;" value="<?php echo esc_attr( $member->user_email ); ?>"/>
+					<p class="description"><?php _e( 'The member\'s email address.', 'rcp' ); ?> <a href="<?php echo esc_url( add_query_arg( 'user_id', $member->ID, admin_url( 'user-edit.php' ) ) ); ?>" title="<?php _e( 'View User\'s Profile', 'rcp' ); ?>"><?php _e( 'Edit User Account', 'rcp' ); ?></a></p>
+				</td>
+			</tr>
 			<tr valign="top">
 				<th scope="row" valign="top">
 					<label for="rcp-status"><?php _e( 'Status', 'rcp' ); ?></label>
@@ -34,7 +66,15 @@ $member = new RCP_Member( $member_id );
 						?>
 					</select>
 					<span alt="f223" class="rcp-help-tip dashicons dashicons-editor-help" title="<?php _e( 'An Active status is required to access paid content. Members with a status of Cancelled may continue to access paid content until the expiration date on their account is reached.', 'rcp' ); ?>"></span>
+					<?php if ( $member->is_pending_verification() ) : ?>
+						<p class="description"><?php _e( '(Pending email verification.)', 'rcp' ); ?></p>
+					<?php endif; ?>
 					<p class="description"><?php _e( 'The status of this user\'s subscription', 'rcp' ); ?></p>
+					<p id="rcp-revoke-access-wrap">
+						<input type="checkbox" id="rcp-revoke-access" name="rcp-revoke-access" value="1">
+						<label for="rcp-revoke-access"><?php _e( 'Revoke access now', 'rcp' ); ?></label>
+						<span alt="f223" class="rcp-help-tip dashicons dashicons-editor-help" title="<?php esc_attr_e( 'If not enabled, the member will retain access until the end of their current term. If checked, access will be revoked immediately.', 'rcp' ); ?>"></span>
+					</p>
 				</td>
 			</tr>
 			<tr valign="top">
@@ -44,8 +84,8 @@ $member = new RCP_Member( $member_id );
 				<td>
 					<select name="level" id="rcp-level">
 						<?php
-							foreach( rcp_get_subscription_levels( 'all' ) as $key => $level) :
-								echo '<option value="' . esc_attr( absint( $level->id ) ) . '"' . selected( $level->name, $member->get_subscription_name(), false ) . '>' . esc_html( $level->name ) . '</option>';
+							foreach( rcp_get_subscription_levels( 'all' ) as $key => $level ) :
+								echo '<option value="' . esc_attr( absint( $level->id ) ) . '"' . selected( $level->id, $member->get_subscription_id(), false ) . '>' . esc_html( $level->name ) . '</option>';
 							endforeach;
 						?>
 					</select>
@@ -67,9 +107,15 @@ $member = new RCP_Member( $member_id );
 					<label for="rcp-expiration"><?php _e( 'Expiration date', 'rcp' ); ?></label>
 				</th>
 				<td>
-					<input name="expiration" id="rcp-expiration" type="text" style="width: 120px;" class="rcp-datepicker" value="<?php echo esc_attr( $member->get_expiration_date() ); ?>"/>
+					<?php
+					$expiration_date = $member->get_expiration_date( false );
+					if( ! empty( $expiration_date ) && 'none' != $expiration_date ) {
+						$expiration_date = date( 'Y-m-d', strtotime( $expiration_date, current_time( 'timestamp' ) ) );
+					}
+					?>
+					<input name="expiration" id="rcp-expiration" type="text" style="width: 120px;" class="rcp-datepicker" value="<?php echo esc_attr( $expiration_date ); ?>"/>
 					<label for="rcp-unlimited">
-						<input name="unlimited" id="rcp-unlimited" type="checkbox"<?php checked( get_user_meta( $member->ID, 'rcp_expiration', true ), 'none' ); ?>/>
+						<input name="unlimited" id="rcp-unlimited" type="checkbox"<?php checked( $expiration_date, 'none' ); ?>/>
 						<span class="description"><?php _e( 'Never expires?', 'rcp' ); ?></span>
 					</label>
 					<span alt="f223" class="rcp-help-tip dashicons dashicons-editor-help" title="<?php _e( 'This is the date the member will lose access to content if their membership is not renewed.', 'rcp' ); ?>"></span>
@@ -150,15 +196,13 @@ $member = new RCP_Member( $member_id );
 					?>
 				</td>
 			</tr>
-			<tr class="form-field">
-				<td colspan="2" scope="row" valign="top" style="padding: 20px 10px 20px 0;">
-					<h4><?php _e( 'Payments', 'rcp' ); ?></h4>
-					<?php echo rcp_print_user_payments_formatted( $member->ID ); ?>
-				</td>
-			</tr>
 			<?php do_action( 'rcp_edit_member_after', $member->ID ); ?>
 		</tbody>
 	</table>
+	
+	<h4><?php _e( 'Payments', 'rcp' ); ?></h4>
+	<?php echo rcp_print_user_payments_formatted( $member->ID ); ?>
+
 	<p class="submit">
 		<input type="hidden" name="rcp-action" value="edit-member"/>
 		<input type="hidden" name="user" value="<?php echo absint( urldecode( $_GET['edit_member'] ) ); ?>"/>

@@ -6,7 +6,7 @@
  *
  * @package     Restrict Content Pro
  * @subpackage  Login Functions
- * @copyright   Copyright (c) 2013, Pippin Williamson
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       1.5
  */
@@ -17,8 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * Retrieves the login URl with an optional redirect
  *
- * @access      public
- * @since       2.1
+ * @param string $redirect URL to redirect to after login (optional).
+ *
+ * @since  2.1
+ * @return string
  */
 function rcp_get_login_url( $redirect = '' ) {
 
@@ -41,8 +43,12 @@ function rcp_get_login_url( $redirect = '' ) {
 /**
  * Log a user in
  *
- * @access      public
- * @since       1.0
+ * @param int    $user_id    ID of the user to login.
+ * @param string $user_login Login name of the user.
+ * @param bool   $remember   Whether or not to remember the user.
+ *
+ * @since  1.0
+ * @return void
  */
 function rcp_login_user_in( $user_id, $user_login, $remember = false ) {
 	$user = get_userdata( $user_id );
@@ -55,10 +61,12 @@ function rcp_login_user_in( $user_id, $user_login, $remember = false ) {
 
 
 /**
- *Process the login form
+ * Process the login form
  *
- * @access      public
- * @since       1.0
+ * @uses rcp_login_user_in()
+ *
+ * @since  1.0
+ * @return void
  */
 function rcp_process_login_form() {
 
@@ -70,7 +78,7 @@ function rcp_process_login_form() {
 		return;
 	}
 
-	if( is_email( $_POST['rcp_user_login'] ) ) {
+	if( is_email( $_POST['rcp_user_login'] ) && ! username_exists( $_POST['rcp_user_login'] ) ) {
 
 		$user = get_user_by( 'email', $_POST['rcp_user_login'] );
 
@@ -122,7 +130,7 @@ function rcp_process_login_form() {
 		rcp_login_user_in( $user->ID, $_POST['rcp_user_login'], $remember );
 
 		// redirect the user back to the page they were previously on
-		wp_redirect( $redirect ); exit;
+		wp_redirect( apply_filters( 'rcp_login_redirect_url', $redirect, $user ) ); exit;
 
 	} else {
 
@@ -137,8 +145,8 @@ add_action('init', 'rcp_process_login_form');
 /**
  * Process the password reset. adapted from wp-login.php
  *
- * @access      public
- * @since       2.3
+ * @since  2.3
+ * @return void
  */
 function rcp_process_lostpassword_reset() {
 
@@ -149,7 +157,7 @@ function rcp_process_lostpassword_reset() {
 	nocache_headers();
 
 	list( $rp_path ) = explode( '?', wp_unslash( $_SERVER['REQUEST_URI'] ) );
-	$rp_cookie = 'rcp-resetpass-' . COOKIEHASH;
+	$rp_cookie = apply_filters( 'rcp_resetpass_cookie_name', 'rcp-resetpass-' . COOKIEHASH );
 
 	// store reset key and login name in cookie & remove from URL
 	if ( isset( $_GET['key'] ) ) {
@@ -183,8 +191,10 @@ add_action('init', 'rcp_process_lostpassword_reset');
 /**
  * Process the lost password form
  *
- * @access      public
- * @since       2.3
+ * @uses rcp_retrieve_password()
+ *
+ * @since  2.3
+ * @return void
  */
 function rcp_process_lostpassword_form() {
 
@@ -209,8 +219,8 @@ add_action('init', 'rcp_process_lostpassword_form');
 /**
  * Send password reset email to user. Adapted from wp-login.php
  *
- * @access      public
- * @since       2.3
+ * @since  2.3
+ * @return WP_Error|bool True if successful.
  */
 function rcp_retrieve_password() {
 	global $wpdb, $wp_hasher, $wp_db_version;
@@ -271,7 +281,7 @@ function rcp_retrieve_password() {
 	$message .= sprintf(__('Username: %s', 'rcp'), $user_login) . "\r\n\r\n";
 	$message .= __('If this was a mistake, just ignore this email and nothing will happen.', 'rcp') . "\r\n\r\n";
 	$message .= __('To reset your password, visit the following address:', 'rcp') . "\r\n\r\n";
-	$message .= '<' . esc_url_raw( add_query_arg( array( 'rcp_action' => 'lostpassword_reset', 'key' => $key, 'login' => rawurlencode( $user_login ) ), $_POST['rcp_redirect'] ) ) . ">\r\n";
+	$message .= esc_url_raw( add_query_arg( array( 'rcp_action' => 'lostpassword_reset', 'key' => $key, 'login' => rawurlencode( $user_login ) ), $_POST['rcp_redirect'] ) ) . "\r\n";
 
 	if ( is_multisite() ) {
 

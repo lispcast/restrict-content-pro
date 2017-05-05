@@ -1,13 +1,13 @@
 <?php
 /**
- * Payment Gateway Base Class
+ * 2Checkout Payment Gateway
  *
  * @package     Restrict Content Pro
- * @subpackage  Classes/Roles
- * @copyright   Copyright (c) 2012, Pippin Williamson
+ * @subpackage  Classes/Gateways/2Checkout
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       2.3
-*/
+ */
 
 class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 
@@ -18,16 +18,19 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	private $environment;
 
 	/**
-	* get things going
-	*
-	* @since      2.3
-	*/
+	 * Get things going
+	 *
+	 * @access public
+	 * @since  2.3
+	 * @return void
+	 */
 	public function init() {
 		global $rcp_options;
 
 		$this->supports[]  = 'one-time';
 		$this->supports[]  = 'recurring';
 		$this->supports[]  = 'fees';
+		$this->supports[]  = 'gateway-submits-form';
 
 		$this->secret_word = isset( $rcp_options['twocheckout_secret_word'] ) ? trim( $rcp_options['twocheckout_secret_word'] ) : '';
 
@@ -56,7 +59,9 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	/**
 	 * Process registration
 	 *
-	 * @since 2.3
+	 * @access public
+	 * @since  2.3
+	 * @return void
 	 */
 	public function process_signup() {
 
@@ -84,7 +89,7 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 				"name"        => $this->subscription_name,
 				"quantity"    => '1',
 				"tangible"    => 'N',
-				"startupFee"  => $this->signup_fee
+				"startupFee"  => $this->initial_amount - $this->amount
 			) );
 
 		} else {
@@ -93,12 +98,11 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 			$line_items   = array( array(
 				"recurrence"  => 0,
 				"type"        => 'product',
-				"price"       => $this->amount,
+				"price"       => $this->initial_amount,
 				"productId"   => $this->subscription_id,
 				"name"        => $this->subscription_name,
 				"quantity"    => '1',
-				"tangible"    => 'N',
-				"startupFee"  => $this->signup_fee
+				"tangible"    => 'N'
 			) );
 
 		}
@@ -124,8 +128,8 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 			if( $charge['response']['responseCode'] == 'APPROVED' ) {
 
 				// Look to see if we have an existing subscription to cancel
-				if( $member->just_upgraded() && rcp_can_member_cancel( $member->ID ) ) {
-					$cancelled = rcp_cancel_member_payment_profile( $member->ID, false );
+				if( $member->just_upgraded() && $member->can_cancel() ) {
+					$cancelled = $member->cancel_payment_profile( false );
 				}
 
 				$payment_data = array(
@@ -133,9 +137,9 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 					'subscription'     => $this->subscription_name,
 					'payment_type'     => $payment_type,
 					'subscription_key' => $this->subscription_key,
-					'amount'           => $this->amount + $this->signup_fee,
+					'amount'           => $this->initial_amount,
 					'user_id'          => $this->user_id,
-					'transaction_id'   => $charge['response']['transactionId']
+					'transaction_id'   => $charge['response']['orderNumber']
 				);
 
 				$rcp_payments = new RCP_Payments();
@@ -146,6 +150,7 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 
 		} catch ( Twocheckout_Error $e ) {
 
+			do_action( 'rcp_registration_failed', $this );
 			wp_die( $e->getMessage(), __( 'Error', 'rcp' ), array( 'response' => '401' ) );
 
 		}
@@ -176,7 +181,9 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	/**
 	 * Proccess webhooks
 	 *
-	 * @since 2.3
+	 * @access public
+	 * @since  2.3
+	 * @return void
 	 */
 	public function process_webhooks() {
 
@@ -253,6 +260,12 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 
 				case 'RECURRING_INSTALLMENT_FAILED' :
 
+					if ( ! empty( $_POST['sale_id'] ) ) {
+						$this->webhook_event_id = sanitize_text_field( $_POST['sale_id'] );
+					}
+
+					do_action( 'rcp_recurring_payment_failed', $member, $this );
+
 					break;
 
 				case 'RECURRING_STOPPED' :
@@ -303,9 +316,11 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	}
 
 	/**
-	 * Process registration
+	 * Display fields and add extra JavaScript
 	 *
-	 * @since 2.3
+	 * @access public
+	 * @since  2.3
+	 * @return void
 	 */
 	public function fields() {
 		ob_start();
@@ -328,7 +343,6 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 			};
 			// Called when token creation fails.
 			var errorCallback = function(data) {
-				console.log(data)
 				if (data.errorCode === 200) {
 					tokenRequest();
 				} else {
@@ -355,12 +369,31 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 			jQuery(document).ready(function($) {
 				// Pull in the public encryption key for our environment
 				TCO.loadPubKey('<?php echo $this->environment; ?>');
-				jQuery("#rcp_registration_form").submit(function(e) {
-					// Call our token request function
-					tokenRequest();
 
-					// Prevent form from submitting
-					return false;
+				jQuery('body').off('rcp_register_form_submission').on('rcp_register_form_submission', function rcp_2co_register_form_submission_handler(event, response, form_id) {
+
+					if ( response.gateway.slug !== 'twocheckout' ) {
+						return;
+					}
+
+					event.preventDefault();
+
+					if( jQuery('.rcp_level:checked').length ) {
+						var price = jQuery('.rcp_level:checked').closest('.rcp_subscription_level').find('span.rcp_price').attr('rel');
+					} else {
+						var price = jQuery('.rcp_level').attr('rel');
+					}
+
+					if( price > 0 && ! jQuery('.rcp_gateway_fields').hasClass('rcp_discounted_100') ) {
+
+
+						// Call our token request function
+						tokenRequest();
+
+						// Prevent form from submitting
+						return false;
+
+					}
 				});
 			});
 		</script>
@@ -372,7 +405,9 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	/**
 	 * Validate additional fields during registration submission
 	 *
-	 * @since 2.3
+	 * @access public
+	 * @since  2.3
+	 * @return void
 	 */
 	public function validate_fields() {
 
@@ -405,7 +440,9 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	/**
 	 * Load 2Checkout JS
 	 *
-	 * @since 2.3
+	 * @access public
+	 * @since  2.3
+	 * @return void
 	 */
 	public function scripts() {
 		wp_enqueue_script( 'twocheckout', 'https://www.2checkout.com/checkout/api/2co.min.js', array( 'jquery' ) );
@@ -414,7 +451,9 @@ class RCP_Payment_Gateway_2Checkout extends RCP_Payment_Gateway {
 	/**
 	 * Determine if zip / state are required
 	 *
-	 * @since 2.3
+	 * @access private
+	 * @since  2.3
+	 * @return bool
 	 */
 	private function card_needs_state_and_zip() {
 

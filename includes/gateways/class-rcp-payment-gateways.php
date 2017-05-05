@@ -3,8 +3,8 @@
  * Payment Gateways Class
  *
  * @package     Restrict Content Pro
- * @subpackage  Classes/Roles
- * @copyright   Copyright (c) 2012, Pippin Williamson
+ * @subpackage  Classes/Payment Gateways
+ * @copyright   Copyright (c) 2017, Pippin Williamson
  * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
  * @since       2.1
 */
@@ -13,7 +13,7 @@ class RCP_Payment_Gateways {
 
 	public $available_gateways;
 
-	public $enabled_gateways; 
+	public $enabled_gateways;
 
 	/**
 	 * Get things going
@@ -31,7 +31,7 @@ class RCP_Payment_Gateways {
 	 * Retrieve a gateway by ID
 	 *
 	 * @since 2.1
-	 * @return object|false
+	 * @return array|false
 	 */
 	public function get_gateway( $id = '' ) {
 
@@ -87,6 +87,16 @@ class RCP_Payment_Gateways {
 				'label'        => __( 'Credit / Debit Card', 'rcp' ),
 				'admin_label'  => __( '2Checkout', 'rcp' ),
 				'class'        => 'RCP_Payment_Gateway_2Checkout'
+			),
+			'authorizenet' => array(
+				'label'        => __( 'Credit / Debit Card', 'rcp' ),
+				'admin_label'  => __( 'Authorize.net', 'rcp' ),
+				'class'        => 'RCP_Payment_Gateway_Authorizenet'
+			),
+			'braintree' => array(
+				'label'        => __( 'Credit / Debit Card', 'rcp' ),
+				'admin_label'  => __( 'Braintree', 'rcp' ),
+				'class'        => 'RCP_Payment_Gateway_Braintree'
 			)
 		);
 
@@ -112,9 +122,9 @@ class RCP_Payment_Gateways {
 			foreach( $this->available_gateways as $key => $gateway ) {
 
 				if( isset( $saved[ $key ] ) && $saved[ $key ] == 1 ) {
-				
+
 					$enabled[ $key ] = $gateway;
-				
+
 				}
 			}
 
@@ -134,6 +144,8 @@ class RCP_Payment_Gateways {
 	/**
 	 * Determine if a gateway is enabled
 	 *
+	 * @param string $id ID of the gateway to check.
+	 *
 	 * @since 2.1
 	 * @return bool
 	 */
@@ -152,7 +164,7 @@ class RCP_Payment_Gateways {
 		if( ! empty( $_POST['rcp_gateway'] ) ) {
 
 			$gateway = $this->get_gateway( sanitize_text_field( $_POST['rcp_gateway'] ) );
-	
+
 			if( isset( $gateway['class'] ) ) {
 				$gateway = new $gateway['class'];
 			}
@@ -165,5 +177,5 @@ class RCP_Payment_Gateways {
 
 		}
 	}
-	
+
 }

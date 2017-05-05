@@ -1,12 +1,19 @@
 <?php
+/**
+ * Payments Page
+ *
+ * @package     Restrict Content Pro
+ * @subpackage  Admin/Payments Page
+ * @copyright   Copyright (c) 2017, Restrict Content Pro
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ */
 
 /**
  * Renders the Restrict > Payments page
  *
  * @since  1.0
  * @return void
-*/
-
+ */
 function rcp_payments_page() {
 	global $rcp_options;
 	$current_page = admin_url( '/admin.php?page=rcp-payments' ); ?>
@@ -19,12 +26,12 @@ function rcp_payments_page() {
 		elseif( isset( $_GET['view'] ) && 'edit-payment' == $_GET['view'] ) :
 			include( 'edit-payment.php' );
 		else : ?>
-		<h2>
+		<h1>
 			<?php _e( 'Payments', 'rcp' ); ?>
 			<a href="<?php echo admin_url( '/admin.php?page=rcp-payments&view=new-payment' ); ?>" class="add-new-h2">
 				<?php _e( 'Create Payment', 'rcp' ); ?>
 			</a>
-		</h2>
+		</h1>
 
 		<?php do_action('rcp_payments_page_top');
 
@@ -81,7 +88,7 @@ function rcp_payments_page() {
 						<tr class="rcp_payment <?php if( rcp_is_odd( $i ) ) echo 'alternate'; ?>">
 							<td class="column-primary has-row-actions" data-colname="<?php _e( 'User', 'rcp' ); ?>">
 								<strong><a href="<?php echo esc_url( add_query_arg( 'user_id', $payment->user_id, menu_page_url( 'rcp-payments', false ) ) ); ?>" title="<?php _e( 'View payments by this user', 'rcp' ); ?>">
-									<?php echo isset( $user->display_name ) ? esc_html( $user->display_name ) : ''; ?>
+									<?php echo isset( $user->display_name ) ? esc_html( $user->display_name ) : sprintf( __( 'User #%d (deleted)', 'rcp' ), $payment->user_id ); ?>
 								</a></strong>
 								<span class="rcp-payment-amount-user-col">
 									<?php printf( _x( ' (%s) ', 'The payment amount shown in the user column on smaller devices', 'rcp' ), rcp_currency_filter( $payment->amount ) ); ?>
@@ -90,9 +97,13 @@ function rcp_payments_page() {
 									<?php if( current_user_can( 'rcp_manage_payments' ) ) : ?>
 										<span class="id"><?php echo __( 'ID:', 'rcp' ) . ' ' . absint( $payment->id ); ?></span>
 										<span class="rcp-row-action-separator"> | </span>
-										<span class="view rcp-view-member"><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'rcp-members', 'edit_member' => $user->ID ), $current_page) ); ?>"><?php _e('View Member', 'rcp'); ?></a></span>
-										<span class="rcp-row-action-separator"> | </span>
-										<span class="rcp-view-invoice"><a href="<?php echo rcp_get_pdf_download_url( $payment->id ); ?>" class="rcp-payment-invoice"><?php _e( 'View Invoice', 'rcp' ); ?></a></span>
+										<?php if ( is_object( $user ) ) : ?>
+											<span class="view rcp-view-member"><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'rcp-members', 'edit_member' => $user->ID ), $current_page) ); ?>"><?php _e('View Member', 'rcp'); ?></a></span>
+											<span class="rcp-row-action-separator"> | </span>
+											<span class="view rcp-edit-user"><a href="<?php echo esc_url( add_query_arg( array( 'user_id' => $user->ID ), admin_url( 'user-edit.php' ) ) ); ?>"><?php _e( 'Edit User', 'rcp'); ?></a></span>
+											<span class="rcp-row-action-separator"> | </span>
+										<?php endif; ?>
+										<span class="rcp-view-invoice"><a href="<?php echo esc_url( rcp_get_invoice_url( $payment->id ) ); ?>" class="rcp-payment-invoice"><?php _e( 'View Invoice', 'rcp' ); ?></a></span>
 										<span class="rcp-row-action-separator"> | </span>
 										<span class="rcp-edit-payment"><a href="<?php echo esc_url( add_query_arg( array( 'payment_id' => $payment->id, 'view' => 'edit-payment' ), admin_url( 'admin.php?page=rcp-payments' ) ) ); ?>" class="rcp-edit-payment"><?php _e( 'Edit', 'rcp' ); ?></a></span>
 										<span class="rcp-row-action-separator"> | </span>
@@ -107,6 +118,7 @@ function rcp_payments_page() {
 							<td data-colname="<?php _e( 'Type', 'rcp' ); ?>"><?php echo esc_html( $payment->payment_type ); ?></td>
 							<td data-colname="<?php _e( 'Transaction ID', 'rcp' ); ?>"><?php echo rcp_get_merchant_transaction_id_link( $payment ); ?></td>
 							<td data-colname="<?php _e( 'Status', 'rcp' ); ?>"><?php echo rcp_get_payment_status_label( $payment ); ?></td>
+							<?php do_action( 'rcp_payments_page_table_column', $payment->id ); ?>
 						</tr>
 					<?php
 					$i++;
